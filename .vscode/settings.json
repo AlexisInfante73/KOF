@@ -1,0 +1,8 @@
+{
+    "C_Cpp.default.configurationName": "Win32",
+    "C_Cpp.intelliSenseEngine": "default",
+    "editor.formatOnSave": false,
+    "[cpp]": {
+        "editor.defaultFormatter": "ms-vscode.cpptools"
+    }
+}
