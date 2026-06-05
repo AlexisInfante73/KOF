@@ -1,52 +1,81 @@
 #include <SFML/Graphics.hpp>
+#include "combatemusical.h"
 #include <iostream>
 
 int main() {
-    // 1. Crear la ventana del juego (Resolución de 800x600)
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Duelo de Bandas - KOF x OsuMania");
-    window.setFramerateLimit(60); // Limitar a 60 FPS
+    sf::RenderWindow window(sf::VideoMode(1280, 720), "KOF x Osu!mania");
+    window.setFramerateLimit(60);
 
-    // 2. Crear el escenario (el lugar donde están parados)
-    // Un rectángulo de 800 de ancho por 100 de alto
-    sf::RectangleShape suelo(sf::Vector2f(800.f, 100.f));
-    suelo.setFillColor(sf::Color(50, 50, 50)); // Color gris oscuro
-    suelo.setPosition(0.f, 500.f);             // Posicionado abajo en la pantalla
+    CombateMusical combate;
 
-    // 3. Crear los personajes (las dos bolitas estáticas)
-    float radioPersonaje = 40.f;
+    sf::Font fuente;
+    bool fuenteCargada = true;
 
-    // Banda Alianza (Izquierda) - Una bolita Azul
-    sf::CircleShape liderIzquierdo(radioPersonaje);
-    liderIzquierdo.setFillColor(sf::Color::Blue);
-    // Posición: X=150, Y=500(suelo) - 80(altura de la bolita)
-    liderIzquierdo.setPosition(150.f, 420.f); 
+    if (!fuente.loadFromFile("assets/fonts/COMIC.TTF")) {
+        std::cout << "No se pudo cargar desde: assets/fonts/COMIC.TTF" << std::endl;
+        if (!fuente.loadFromFile("../assets/fonts/COMIC.TTF")) {
+            fuenteCargada = false;
+        }
+    }
 
-    // Banda Rival (Derecha) - Una bolita Roja
-    sf::CircleShape liderDerecho(radioPersonaje);
-    liderDerecho.setFillColor(sf::Color::Red);
-    // Posición: X=610 (800 - 150 - 40), Y=420
-    liderDerecho.setPosition(610.f, 420.f);
+    sf::Text textoMenu;
+    if (fuenteCargada) {
+        textoMenu.setFont(fuente);
+        textoMenu.setString("EMPEZAR AVENTURA");
+        textoMenu.setFillColor(sf::Color::White);
+    } else {
+        textoMenu.setString("ERROR: No se encontro COMIC.TTF");
+        textoMenu.setFillColor(sf::Color::Red);
+    }
+    
+    textoMenu.setCharacterSize(42);
+    textoMenu.setPosition(430.f, 550.f); 
 
-    // 4. Bucle principal del juego
+    int estadoJuego = 0;
+
+    sf::CircleShape bolitaAzul(35.f);
+    bolitaAzul.setFillColor(sf::Color::Blue);
+    bolitaAzul.setPosition(80.f, 600.f);
+
+    sf::CircleShape bolitaRoja(35.f);
+    bolitaRoja.setFillColor(sf::Color::Red);
+    bolitaRoja.setPosition(1130.f, 600.f);
+
     while (window.isOpen()) {
         sf::Event event;
         while (window.pollEvent(event)) {
-            // Detectar si se cierra la ventana
             if (event.type == sf::Event::Closed)
                 window.close();
+
+            if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Enter && estadoJuego == 0) {
+                    estadoJuego = 1;
+                    combate.reiniciarRelojes();
+                }
+                else if (event.key.code == sf::Keyboard::Escape && estadoJuego == 1) {
+                    estadoJuego = 0;
+                    combate.limpiarNotas();
+                }
+            }
         }
 
-        // --- RENDERIZADO (Dibujo) ---
-        window.clear(sf::Color(30, 30, 30)); // Fondo casi negro
+        // --- ENTRADA Y ACTUALIZACIÓN DEL JUEGO ---
+        if (estadoJuego == 1) {
+            combate.procesarEntrada(); // Captura las teclas A, S, J, K en tiempo real
+            combate.actualizar();
+        }
 
-        // Dibujamos el suelo
-        window.draw(suelo);
+        window.clear(sf::Color(25, 25, 25));
 
-        // Dibujamos los dos líderes (las bolitas)
-        window.draw(liderIzquierdo);
-        window.draw(liderDerecho);
+        if (estadoJuego == 0) {
+            window.draw(textoMenu);
+        } 
+        else if (estadoJuego == 1) {
+            combate.dibujar(window);
+            window.draw(bolitaAzul);
+            window.draw(bolitaRoja);
+        }
 
-        // Mostrar todo en pantalla
         window.display();
     }
 
