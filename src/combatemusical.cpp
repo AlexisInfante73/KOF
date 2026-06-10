@@ -36,28 +36,28 @@ CombateMusical::CombateMusical() {
     // --- TEXTOS DE RESERVA (TAMAÑO MÁXIMO ARCADE DE 48) ---
     for (int i = 0; i < 3; i++) {
         txtReservaJ1[i].setFont(fuenteUI);
-        txtReservaJ1[i].setCharacterSize(48); // Tamaño ultra grande solicitado
+        txtReservaJ1[i].setCharacterSize(48); 
         txtReservaJ1[i].setFillColor(sf::Color(210, 210, 210));
         txtReservaJ1[i].setOutlineColor(sf::Color::Black);
-        txtReservaJ1[i].setOutlineThickness(3.f); // Contorno reforzado para que se lea en cualquier fondo
+        txtReservaJ1[i].setOutlineThickness(3.f); 
 
         txtReservaJ2[i].setFont(fuenteUI);
-        txtReservaJ2[i].setCharacterSize(48); // Tamaño ultra grande solicitado
+        txtReservaJ2[i].setCharacterSize(48); 
         txtReservaJ2[i].setFillColor(sf::Color(210, 210, 210));
         txtReservaJ2[i].setOutlineColor(sf::Color::Black);
-        txtReservaJ2[i].setOutlineThickness(3.f); // Contorno reforzado para que se lea en cualquier fondo
+        txtReservaJ2[i].setOutlineThickness(3.f); 
     }
 
     // --- CONFIGURACIÓN DE NOMBRES PRINCIPALES ---
     txtNombreJ1.setFont(fuenteUI);
-    txtNombreJ1.setCharacterSize(32); // Escalado para balancear estéticamente con las reservas
+    txtNombreJ1.setCharacterSize(32); 
     txtNombreJ1.setFillColor(sf::Color::White);
     txtNombreJ1.setOutlineColor(sf::Color::Black);
     txtNombreJ1.setOutlineThickness(2.f);
     txtNombreJ1.setPosition(135.f, 2.f);
 
     txtNombreJ2.setFont(fuenteUI);
-    txtNombreJ2.setCharacterSize(32); // Escalado para balancear estéticamente con las reservas
+    txtNombreJ2.setCharacterSize(32); 
     txtNombreJ2.setFillColor(sf::Color::White);
     txtNombreJ2.setOutlineColor(sf::Color::Black);
     txtNombreJ2.setOutlineThickness(2.f);
@@ -341,6 +341,7 @@ void CombateMusical::actualizar() {
     bool j2EnGuardia = false;
     if (botQuiereDefenderse) j2EnGuardia = true;
 
+    // --- PROCESAMIENTO DE DAÑO JUGADOR 1 AL BOT ---
     if (equipoJ1[indiceActivoJ1].getEstaAtacando() && !golpeImpactadoEsteTurno) {
         if (std::abs(equipoJ1[indiceActivoJ1].getPosicionX() - equipoJ2[indiceActivoJ2].getPosicionX()) <= 125.f) {
             int tipo = equipoJ1[indiceActivoJ1].getTipoAtaque();
@@ -360,7 +361,13 @@ void CombateMusical::actualizar() {
             if (dmg > 0.f) {
                 equipoJ2[indiceActivoJ2].recibirDanio(dmg);
                 acumularEnergiaJ2(6.f); 
-                if (equipoJ2[indiceActivoJ2].getVida() <= 0.f) { avanzarSiguienteRonda(1); return; }
+                
+                if (equipoJ2[indiceActivoJ2].getVida() <= 0.f) {
+                    // SE CORRIGE EL ÚLTIMO PIXEL: Vaciar la barra visual completamente en el acto
+                    barraVidaJ2.setSize(sf::Vector2f(0.f, 25.f));
+                    avanzarSiguienteRonda(1); 
+                    return; 
+                }
             }
             golpeImpactadoEsteTurno = true; 
         }
@@ -370,6 +377,7 @@ void CombateMusical::actualizar() {
     if (x1 < x2 && sf::Keyboard::isKeyPressed(sf::Keyboard::A)) j1EnGuardia = true;
     if (x1 > x2 && sf::Keyboard::isKeyPressed(sf::Keyboard::D)) j1EnGuardia = true;
 
+    // --- PROCESAMIENTO DE DAÑO BOT AL JUGADOR 1 ---
     if (equipoJ2[indiceActivoJ2].getEstaAtacando() && !botGolpeImpactadoEsteTurno) {
         if (std::abs(equipoJ2[indiceActivoJ2].getPosicionX() - equipoJ1[indiceActivoJ1].getPosicionX()) <= 125.f) {
             int tipo = equipoJ2[indiceActivoJ2].getTipoAtaque();
@@ -389,15 +397,24 @@ void CombateMusical::actualizar() {
             if (dmg > 0.f) {
                 equipoJ1[indiceActivoJ1].recibirDanio(dmg);
                 acumularEnergiaJ1(6.f); 
-                if (equipoJ1[indiceActivoJ1].getVida() <= 0.f) { avanzarSiguienteRonda(2); return; }
+                
+                if (equipoJ1[indiceActivoJ1].getVida() <= 0.f) {
+                    // SE CORRIGE EL ÚLTIMO PIXEL: Vaciar la barra visual completamente en el acto
+                    barraVidaJ1.setSize(sf::Vector2f(0.f, 25.f));
+                    avanzarSiguienteRonda(2); 
+                    return; 
+                }
             }
             botGolpeImpactadoEsteTurno = true;
         }
     }
 
-    barraVidaJ1.setSize(sf::Vector2f((equipoJ1[indiceActivoJ1].getVida() / 250.f) * 420.f, 25.f));
+    // --- ACTUALIZACIÓN ESTÁNDAR DE LAS BARRAS EN TIEMPO REAL ---
+    float vidaJ1Proporcional = (equipoJ1[indiceActivoJ1].getVida() / 250.f) * 420.f;
+    barraVidaJ1.setSize(sf::Vector2f(vidaJ1Proporcional > 0.f ? vidaJ1Proporcional : 0.f, 25.f));
     
     float anchoVerdeJ2 = (equipoJ2[indiceActivoJ2].getVida() / 250.f) * 420.f;
+    if (anchoVerdeJ2 < 0.f) anchoVerdeJ2 = 0.f;
     barraVidaJ2.setSize(sf::Vector2f(anchoVerdeJ2, 25.f));
     barraVidaJ2.setPosition(1280.f - 135.f - anchoVerdeJ2, 42.f);
 
@@ -425,9 +442,9 @@ void CombateMusical::actualizar() {
     
     // --- DISTRIBUCIÓN VERTICAL COMPACTADA CON ULTRA TAMAÑO (48) ---
     float inicioY = 75.f;    
-    float espaciadoY = 52.f; // Espaciado amplio de 52.f para dar cabida al masivo tamaño 48 sin colisionar
+    float espaciadoY = 52.f; 
 
-    // Lista Jugador 1
+    // Lista Reservas Jugador 1
     int filaJ1 = 0;
     for (int i = 0; i < 3; i++) {
         if (i < indiceActivoJ1) continue; 
@@ -441,15 +458,13 @@ void CombateMusical::actualizar() {
     }
     for(int i = filaJ1; i < 3; i++) { txtReservaJ1[i].setString(""); }
 
-    // Lista Jugador 2 Bot (Alineado dinámicamente al borde derecho)
+    // Lista Reservas Jugador 2 (Bot)
     int filaJ2 = 0;
     for (int i = 0; i < 3; i++) {
         if (i < indiceActivoJ2) continue; 
 
         if (i != indiceActivoJ2) {
             txtReservaJ2[filaJ2].setString(equipoJ2[i].getNombre());
-            
-            // Re-calculamos dinámicamente la posición X con la variable local correcta 'espaciadoY'
             float posX = 1280.f - 135.f - txtReservaJ2[filaJ2].getLocalBounds().width;
             txtReservaJ2[filaJ2].setPosition(posX, inicioY + (filaJ2 * espaciadoY));
             txtReservaJ2[filaJ2].setFillColor(sf::Color(190, 190, 190)); 
