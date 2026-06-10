@@ -6,6 +6,12 @@
 #include <string>
 #include "personaje.h"
 
+// --- NUEVO ENUM PARA CONTROLAR LAS PANTALLAS ---
+enum class EstadoJuego {
+    SeleccionPersonajes,
+    Combate
+};
+
 class CombateMusical {
 private:
     // Escenario y Fondos
@@ -77,6 +83,28 @@ private:
     void acumularEnergiaJ2(float cantidad);
     void actualizarIABot();
     void avanzarSiguienteRonda(int ganadorDeRonda);
+
+    // =========================================================================
+    // 🕹️ NUEVOS ELEMENTOS PRIVADOS PARA LA SELECCIÓN DE PERSONAJES (KOF)
+    // =========================================================================
+    EstadoJuego estadoActual;
+
+    // Recursos de la interfaz de selección
+    sf::Texture texturaSeleccion;
+    sf::Sprite spriteSeleccion;
+    sf::RectangleShape selectorCuadrula;
+
+    // Lógica de la cuadrícula (2 filas x 6 columnas = 12 casillas)
+    int filaSeleccionada;
+    int colSeleccionada;
+
+    // Temporizador de selección (15 segundos)
+    sf::Clock relojSeleccion;
+    float tiempoSeleccionRestante;
+    sf::Text txtTiempoSeleccion; 
+
+    // Inicializador interno
+    void inicializarPantallaSeleccion();
 
 public:
     CombateMusical();
