@@ -33,7 +33,7 @@ CombateMusical::CombateMusical() {
     txtAnuncioKO.setOutlineColor(sf::Color::Black);
     txtAnuncioKO.setOutlineThickness(4.f);
 
-    // Texto de reserva (Abajo de las barras de vida en el centro)
+    // Texto de reserva
     txtContadorOrden.setFont(fuenteUI);
     txtContadorOrden.setCharacterSize(16);
     txtContadorOrden.setFillColor(sf::Color(200, 200, 200));
@@ -45,16 +45,15 @@ CombateMusical::CombateMusical() {
     txtNombreJ1.setFillColor(sf::Color::White);
     txtNombreJ1.setOutlineColor(sf::Color::Black);
     txtNombreJ1.setOutlineThickness(1.5f);
-    txtNombreJ1.setPosition(135.f, 12.f); // Alineado sobre el inicio de su barra
+    txtNombreJ1.setPosition(135.f, 12.f);
 
     txtNombreJ2.setFont(fuenteUI);
     txtNombreJ2.setCharacterSize(22);
     txtNombreJ2.setFillColor(sf::Color::White);
     txtNombreJ2.setOutlineColor(sf::Color::Black);
     txtNombreJ2.setOutlineThickness(1.5f);
-    // Nota: La posición X del J2 se recalcula dinámicamente en actualizar() para alinearse a la derecha
 
-    // --- MARCOS DE AVATARS (Extremos Absolutos) ---
+    // --- MARCOS DE AVATARS ---
     marcoAvatarJ1.setSize(sf::Vector2f(85.f, 85.f));
     marcoAvatarJ1.setFillColor(sf::Color::Transparent);
     marcoAvatarJ1.setOutlineColor(sf::Color::White);
@@ -69,8 +68,7 @@ CombateMusical::CombateMusical() {
     marcoAvatarJ2.setPosition(1170.f, 20.f);
     spriteAvatarJ2.setPosition(1170.f, 20.f);
 
-    // --- CORRECCIÓN DE POSICIÓN: BARRAS DE VIDA ---
-    // Bajamos la coordenada Y de 40.f (o de donde estuviera fallando) a 42.f estables
+    // --- BARRAS DE VIDA ---
     fondoBarraJ1.setSize(sf::Vector2f(420.f, 25.f));
     fondoBarraJ1.setFillColor(sf::Color(100, 0, 0));
     fondoBarraJ1.setPosition(135.f, 42.f); 
@@ -84,7 +82,7 @@ CombateMusical::CombateMusical() {
 
     barraVidaJ2.setFillColor(sf::Color::Green);
 
-    // --- HUD INFERIOR (BARRAS DE SÚPER ENERGÍA) ---
+    // --- HUD INFERIOR (BARRAS DE SÚPER) ---
     txtNivelJ1.setFont(fuenteUI);
     txtNivelJ1.setCharacterSize(38);
     txtNivelJ1.setFillColor(sf::Color::Yellow);
@@ -120,6 +118,7 @@ CombateMusical::CombateMusical() {
     rondaTerminada = false;
     floatProximaDecision = 0.3f;
     botQuiereAgacharse = false;
+    botQuiereDefenderse = false; 
 
     equipoJ1.resize(3);
     equipoJ2.resize(3);
@@ -128,22 +127,22 @@ CombateMusical::CombateMusical() {
 }
 
 void CombateMusical::acumularEnergiaJ1(float cantidad) {
-    if (nivelesJ1 >= 3) return; 
+    if (nivelesJ1 >= 5) return; // Modificado límite a 5
     energiaJ1 += cantidad;
     if (energiaJ1 >= 100.f) {
         energiaJ1 -= 100.f;
         nivelesJ1++;
-        if (nivelesJ1 > 3) { nivelesJ1 = 3; energiaJ1 = 0.f; }
+        if (nivelesJ1 > 5) { nivelesJ1 = 5; energiaJ1 = 0.f; } // Modificado tope a 5
     }
 }
 
 void CombateMusical::acumularEnergiaJ2(float cantidad) {
-    if (nivelesJ2 >= 3) return;
+    if (nivelesJ2 >= 5) return; // Modificado límite a 5
     energiaJ2 += cantidad;
     if (energiaJ2 >= 100.f) {
         energiaJ2 -= 100.f;
         nivelesJ2++;
-        if (nivelesJ2 > 3) { nivelesJ2 = 3; energiaJ2 = 0.f; }
+        if (nivelesJ2 > 5) { nivelesJ2 = 5; energiaJ2 = 0.f; } // Modificado tope a 5
     }
 }
 
@@ -245,8 +244,11 @@ void CombateMusical::actualizarIABot() {
 
     if (equipoJ2[indiceActivoJ2].getEstaAtacando()) return;
 
+    bool jugadorAtacando = equipoJ1[indiceActivoJ1].getEstaAtacando();
+
     if (distancia > 115.f) {
         botQuiereAgacharse = false;
+        botQuiereDefenderse = false;
         equipoJ2[indiceActivoJ2].setAgachado(false);
         if (x2 > x1) equipoJ2[indiceActivoJ2].caminar(-1.f); else equipoJ2[indiceActivoJ2].caminar(1.f);
     } else {
@@ -256,21 +258,36 @@ void CombateMusical::actualizarIABot() {
             
             int decision = std::rand() % 100;
             
-            if (nivelesJ2 >= 1 && decision < 25) { 
+            if (jugadorAtacando && decision < 50) {
+                botQuiereDefenderse = true; 
+                botQuiereAgacharse = false;
+            }
+            else if (nivelesJ2 >= 1 && decision < 20) { 
                 nivelesJ2--;
                 equipoJ2[indiceActivoJ2].lanzarAtaque(5); 
                 botGolpeImpactadoEsteTurno = false;
                 botQuiereAgacharse = false;
+                botQuiereDefenderse = false;
             } 
-            else if (decision < 70) {
+            else if (decision < 65) {
                 equipoJ2[indiceActivoJ2].lanzarAtaque((std::rand() % 4) + 1);
                 botGolpeImpactadoEsteTurno = false;
                 botQuiereAgacharse = false;
+                botQuiereDefenderse = false;
             } else {
                 botQuiereAgacharse = true;
+                botQuiereDefenderse = false;
             }
         }
-        if (botQuiereAgacharse) equipoJ2[indiceActivoJ2].setAgachado(true); else equipoJ2[indiceActivoJ2].setAgachado(false);
+
+        if (botQuiereAgacharse) {
+            equipoJ2[indiceActivoJ2].setAgachado(true);
+        } else if (botQuiereDefenderse) {
+            equipoJ2[indiceActivoJ2].setAgachado(false);
+            if (x2 > x1) equipoJ2[indiceActivoJ2].caminar(1.f); else equipoJ2[indiceActivoJ2].caminar(-1.f);
+        } else {
+            equipoJ2[indiceActivoJ2].setAgachado(false);
+        }
     }
 }
 
@@ -309,6 +326,10 @@ void CombateMusical::actualizar() {
         equipoJ2[indiceActivoJ2].corregirPosicionX(-dir * solapamiento / 2.f);
     }
 
+    // --- DETECCIÓN DE GUARDIA DEL BOT (J2) ---
+    bool j2EnGuardia = false;
+    if (botQuiereDefenderse) j2EnGuardia = true;
+
     // Lógica de impactos J1 -> J2
     if (equipoJ1[indiceActivoJ1].getEstaAtacando() && !golpeImpactadoEsteTurno) {
         if (std::abs(equipoJ1[indiceActivoJ1].getPosicionX() - equipoJ2[indiceActivoJ2].getPosicionX()) <= 125.f) {
@@ -322,6 +343,10 @@ void CombateMusical::actualizar() {
             if (tipo == 4 && !rivalEvadiendo) { dmg = 15.f; acumularEnergiaJ1(9.f); }
             if (tipo == 5) { dmg = 45.f; } 
 
+            if (j2EnGuardia && tipo != 5) { 
+                dmg = dmg * 0.2f; 
+            }
+
             if (dmg > 0.f) {
                 equipoJ2[indiceActivoJ2].recibirDanio(dmg);
                 acumularEnergiaJ2(6.f); 
@@ -330,6 +355,11 @@ void CombateMusical::actualizar() {
             golpeImpactadoEsteTurno = true; 
         }
     }
+
+    // --- DETECCIÓN DE GUARDIA JUGADOR (J1) ---
+    bool j1EnGuardia = false;
+    if (x1 < x2 && sf::Keyboard::isKeyPressed(sf::Keyboard::A)) j1EnGuardia = true;
+    if (x1 > x2 && sf::Keyboard::isKeyPressed(sf::Keyboard::D)) j1EnGuardia = true;
 
     // Lógica de impactos J2 -> J1
     if (equipoJ2[indiceActivoJ2].getEstaAtacando() && !botGolpeImpactadoEsteTurno) {
@@ -344,6 +374,10 @@ void CombateMusical::actualizar() {
             if (tipo == 4 && !jugador1Evadiendo) { dmg = 15.f; acumularEnergiaJ2(9.f); }
             if (tipo == 5) { dmg = 45.f; } 
 
+            if (j1EnGuardia && tipo != 5) {
+                dmg = dmg * 0.2f;
+            }
+
             if (dmg > 0.f) {
                 equipoJ1[indiceActivoJ1].recibirDanio(dmg);
                 acumularEnergiaJ1(6.f); 
@@ -353,21 +387,21 @@ void CombateMusical::actualizar() {
         }
     }
 
-    // --- CORRECCIÓN DE ALTURA EN EL ACTUALIZAR ---
+    // Actualización de barras de vida
     barraVidaJ1.setSize(sf::Vector2f((equipoJ1[indiceActivoJ1].getVida() / 250.f) * 420.f, 25.f));
     
     float anchoVerdeJ2 = (equipoJ2[indiceActivoJ2].getVida() / 250.f) * 420.f;
     barraVidaJ2.setSize(sf::Vector2f(anchoVerdeJ2, 25.f));
-    barraVidaJ2.setPosition(1280.f - 135.f - anchoVerdeJ2, 42.f); // Mantiene Y en 42.f fija
+    barraVidaJ2.setPosition(1280.f - 135.f - anchoVerdeJ2, 42.f);
 
-    // Comportamiento de las Barras de Súper Energía
-    if (nivelesJ1 == 3) {
+    // --- MANEJO VISUAL DE LA BARRA DE ENERGÍA (TOPE 5) ---
+    if (nivelesJ1 == 5) {
         barraEspecialJ1.setSize(sf::Vector2f(320.f, 18.f)); 
     } else {
         barraEspecialJ1.setSize(sf::Vector2f((energiaJ1 / 100.f) * 320.f, 18.f));
     }
 
-    if (nivelesJ2 == 3) {
+    if (nivelesJ2 == 5) {
         barraEspecialJ2.setSize(sf::Vector2f(320.f, 18.f));
         barraEspecialJ2.setPosition(1280.f - 95.f - 320.f, 645.f);
     } else {
@@ -381,7 +415,7 @@ void CombateMusical::actualizar() {
     
     txtNombreJ1.setString(equipoJ1[indiceActivoJ1].getNombre());
     txtNombreJ2.setString(equipoJ2[indiceActivoJ2].getNombre());
-    txtNombreJ2.setPosition(1280.f - 135.f - txtNombreJ2.getLocalBounds().width, 12.f); // Alineado con barra derecha
+    txtNombreJ2.setPosition(1280.f - 135.f - txtNombreJ2.getLocalBounds().width, 12.f); 
     
     txtContadorOrden.setString("Aliados en reserva: " + std::to_string(3 - (indiceActivoJ1 + 1)) + " | Rivales en reserva: " + std::to_string(3 - (indiceActivoJ2 + 1)));
     txtContadorOrden.setPosition(1280.f / 2.f - txtContadorOrden.getLocalBounds().width / 2.f, 75.f);
@@ -402,7 +436,6 @@ void CombateMusical::dibujar(sf::RenderWindow& window) {
     if (indiceActivoJ1 < 3) equipoJ1[indiceActivoJ1].dibujar(window);
     if (indiceActivoJ2 < 3) equipoJ2[indiceActivoJ2].dibujar(window);
 
-    // HUD Superior
     window.draw(fondoBarraJ1); window.draw(fondoBarraJ2);
     window.draw(barraVidaJ1); window.draw(barraVidaJ2);
     window.draw(txtCronometro); window.draw(txtContadorOrden);
@@ -411,7 +444,6 @@ void CombateMusical::dibujar(sf::RenderWindow& window) {
     if (indiceActivoJ1 < 3) window.draw(spriteAvatarJ1);
     if (indiceActivoJ2 < 3) window.draw(spriteAvatarJ2);
 
-    // HUD Inferior
     window.draw(fondoEspecialJ1); window.draw(fondoEspecialJ2);
     window.draw(barraEspecialJ1); window.draw(barraEspecialJ2);
     window.draw(txtNivelJ1);      window.draw(txtNivelJ2);
