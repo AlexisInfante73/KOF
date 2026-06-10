@@ -1,115 +1,143 @@
 #include "personaje.h"
-#include <iostream>
+#include <cmath>
 
 Personaje::Personaje() {
-    vida = 100;
-    estadoActual = Estado::IDLE;
-    esJugador1 = true;
-    posX = 0.f;
-    posY = 0.f;
+    radioOriginal = 40.f;
+    enElSuelo = true;
+    estaAgachado = false;
+    estaAtacando = false;
+    esSuperAtaque = false;
+    tipoAtaque = 0;
+    vida = 250.f; // <-- MODIFICADO: Antes 128.f
+    nombre = "Anonimo";
+    rutaAvatar = "";
+    posicion = sf::Vector2f(0.f, 0.f);
+    velocidad = sf::Vector2f(0.f, 0.f);
+    
+    cuerpoShape.setRadius(radioOriginal);
+    cuerpoShape.setOrigin(radioOriginal, radioOriginal * 2.f); 
 }
 
-void Personaje::inicializar(std::string rutaTextura, bool esJ1, float xInicial, float yInicial) {
-    esJugador1 = esJ1;
-    posX = xInicial;
-    posY = yInicial;
+void Personaje::inicializar(std::string nombrePeleador, std::string rutaImg, sf::Color color, float xInicial) {
+    nombre = nombrePeleador;
+    rutaAvatar = rutaImg;
+    colorBase = color;
+    cuerpoShape.setFillColor(colorBase);
+    posicion = sf::Vector2f(xInicial, ALTURA_SUELO);
+    velocidad = sf::Vector2f(0.f, 0.f);
+    vida = 250.f; // <-- MODIFICADO: Más salud al iniciar la ronda
+    estaAtacando = false;
+    esSuperAtaque = false;
+    estaAgachado = false;
+    cuerpoShape.setRadius(radioOriginal);
+    cuerpoShape.setOrigin(radioOriginal, radioOriginal * 2.f);
+    cuerpoShape.setPosition(posicion);
+}
 
-    // Intentar cargar la textura desde la raíz
-    if (!textura.loadFromFile(rutaTextura)) {
-        // Intento de respaldo por si el ejecutable corre dentro de /bin
-        if (!textura.loadFromFile("../" + rutaTextura)) {
-            std::cout << "[ERROR PERSONAJE]: No se pudo cargar la imagen: " << rutaTextura << std::endl;
-            return;
+void Personaje::caminar(float direccion) {
+    if (!estaAgachado && !estaAtacando) { 
+        velocidad.x = direccion * VEL_CAMINAR;
+    } else {
+        velocidad.x = 0.f;
+    }
+}
+
+void Personaje::saltar() {
+    if (enElSuelo && !estaAgachado && !estaAtacando) {
+        velocidad.y = FUERZA_SALTO;
+        enElSuelo = false;
+    }
+}
+
+void Personaje::setAgachado(bool agachado) {
+    if (estaAtacando) return; 
+
+    estaAgachado = agachado;
+    if (estaAgachado) {
+        cuerpoShape.setRadius(radioOriginal / 2.f);
+        cuerpoShape.setOrigin(radioOriginal / 2.f, radioOriginal);
+    } else {
+        cuerpoShape.setRadius(radioOriginal);
+        cuerpoShape.setOrigin(radioOriginal, radioOriginal * 2.f);
+    }
+}
+
+void Personaje::lanzarAtaque(int tipo) {
+    if (!estaAtacando) { 
+        estaAtacando = true;
+        tipoAtaque = tipo;
+        relojAtaque.restart();
+        velocidad.x = 0.f; 
+
+        if (tipo == 1) cuerpoShape.setFillColor(sf::Color(255, 255, 150)); 
+        if (tipo == 2) cuerpoShape.setFillColor(sf::Color::Yellow);         
+        if (tipo == 3) cuerpoShape.setFillColor(sf::Color(255, 150, 255)); 
+        if (tipo == 4) cuerpoShape.setFillColor(sf::Color::Magenta);        
+        
+        if (tipo == 5) {
+            esSuperAtaque = true;
+            cuerpoShape.setFillColor(sf::Color::White);
         }
     }
-
-    sprite.setTexture(textura);
-    
-    // Configurar el origen en el centro horizontal (width / 2) y en la base (height)
-    // Esto hace que el personaje "pise" el suelo de forma correcta y rote bien al caer derrotado
-    sf::FloatRect bounds = sprite.getLocalBounds();
-    sprite.setOrigin(bounds.width / 2.f, bounds.height); 
-
-    // Escala del personaje (ajusta estos números si se ven muy grandes o pequeños)
-    float escalaX = 2.5f;
-    float escalaY = 2.5f;
-
-    // Efecto espejo: El Jugador 2 debe mirar hacia la izquierda de forma nativa
-    if (!esJugador1) {
-        sprite.setScale(-escalaX, escalaY); 
-    } else {
-        sprite.setScale(escalaX, escalaY);
-    }
-
-    // Posicionar el sprite en las coordenadas iniciales
-    sprite.setPosition(posX, posY);
-}
-
-void Personaje::actualizarPosicion(float nuevoX, float nuevoY) {
-    posX = nuevoX;
-    posY = nuevoY;
-    sprite.setPosition(posX, posY); // Actualiza la posición física del sprite en el motor de SFML
-}
-
-void Personaje::cambiarEstado(Estado nuevoEstado) {
-    estadoActual = nuevoEstado;
-    relojEstado.restart(); // Reiniciar el cronómetro para los estados temporales
-
-    // Modificaciones de color instantáneas según el estado
-    if (estadoActual == Estado::ATACANDO) {
-        sprite.setColor(sf::Color(200, 255, 200)); // Tinte verde/celeste claro al atacar
-    }
-}
-
-void Personaje::recibirDanio(int cantidad) {
-    vida -= cantidad;
-    if (vida < 0) vida = 0;
-
-    if (vida == 0) {
-        cambiarEstado(Estado::DERROTADO);
-    } else {
-        cambiarEstado(Estado::HERIDO);
-    }
-}
-
-int Personaje::getVida() const {
-    return vida;
-}
-
-Estado Personaje::getEstado() const {
-    return estadoActual;
 }
 
 void Personaje::actualizar() {
-    // 1. Controlar la duración del estado ATACANDO (0.25 segundos)
-    if (estadoActual == Estado::ATACANDO && relojEstado.getElapsedTime().asSeconds() > 0.25f) {
-        estadoActual = Estado::IDLE;
-        sprite.setColor(sf::Color::White); // Restaurar color original
-    }
-    
-    // 2. Controlar la duración del estado HERIDO (0.20 segundos)
-    if (estadoActual == Estado::HERIDO && relojEstado.getElapsedTime().asSeconds() > 0.20f) {
-        estadoActual = Estado::IDLE;
-        sprite.setColor(sf::Color::White); // Restaurar color original
-    }
-
-    // 3. Comportamiento en estado DERROTADO
-    if (estadoActual == Estado::DERROTADO) {
-        sprite.setColor(sf::Color(255, 100, 100, 150)); // Rojo semitransparente
-        
-        // Rotar el sprite 90 grados para simular que cae noqueado al piso
-        // El J1 rota hacia la derecha y el J2 hacia la izquierda
-        if (sprite.getRotation() == 0.f) {
-            sprite.setRotation(90.f * (esJugador1 ? 1.f : -1.f));
+    if (estaAtacando) {
+        if (relojAtaque.getElapsedTime().asSeconds() >= DURACION_ATAQUE) {
+            estaAtacando = false;
+            esSuperAtaque = false;
+            tipoAtaque = 0;
+            cuerpoShape.setFillColor(colorBase); 
         }
     }
-    
-    // 4. Forzar el color rojo brillante frame a frame mientras esté herido
-    if (estadoActual == Estado::HERIDO) {
-        sprite.setColor(sf::Color::Red);
+
+    if (!enElSuelo) {
+        velocidad.y += GRAVEDAD;
     }
+
+    posicion.x += velocidad.x;
+    posicion.y += velocidad.y;
+    velocidad.x = 0.f;
+
+    if (posicion.y >= ALTURA_SUELO) {
+        posicion.y = ALTURA_SUELO;
+        velocidad.y = 0.f;
+        enElSuelo = true;
+    }
+
+    if (posicion.x < 40.f) posicion.x = 40.f;
+    if (posicion.x > 1240.f) posicion.x = 1240.f;
+
+    cuerpoShape.setPosition(posicion);
 }
 
-void Personaje::dibujar(sf::RenderWindow& ventana) {
-    ventana.draw(sprite);
+void Personaje::dibujar(sf::RenderWindow& window) {
+    window.draw(cuerpoShape);
+}
+
+float Personaje::getPosicionX() const { return posicion.x; }
+
+void Personaje::corregirPosicionX(float deltaX) {
+    posicion.x += deltaX;
+    if (posicion.x < 40.f) posicion.x = 40.f;
+    if (posicion.x > 1240.f) posicion.x = 1240.f;
+    cuerpoShape.setPosition(posicion);
+}
+
+bool Personaje::getEstaAgachado() const { return estaAgachado; }
+bool Personaje::getEstaAtacando() const { return estaAtacando; }
+bool Personaje::getEsSuperAtaque() const { return esSuperAtaque; }
+int Personaje::getTipoAtaque() const { return tipoAtaque; }
+float Personaje::getVida() const { return vida; }
+std::string Personaje::getNombre() const { return nombre; }
+std::string Personaje::getRutaAvatar() const { return rutaAvatar; }
+
+void Personaje::recibirDanio(float cantidad) {
+    vida -= cantidad;
+    if (vida < 0.f) vida = 0.f; 
+}
+
+void Personaje::curarVida(float cantidad) {
+    vida += cantidad;
+    if (vida > 250.f) vida = 250.f; // <-- MODIFICADO: Límite ajustado a 250.f
 }

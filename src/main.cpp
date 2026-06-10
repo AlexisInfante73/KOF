@@ -77,6 +77,8 @@ int main() {
 
     sf::Text txtPersonajesTitulo("SELECCION DE PERSONAJE", fuenteJuego, 40);
     txtPersonajesTitulo.setFillColor(sf::Color::Magenta);
+    
+    // AQUÍ CORREGIMOS: Declaración explícita de txtPersonajesSub para evitar el error de la terminal
     sf::Text txtPersonajesSub("Peleador listo.\nPresiona ENTER para ajustar la dificultad de la IA.", fuenteJuego, 26);
     txtPersonajesSub.setFillColor(sf::Color::White);
 
@@ -127,11 +129,11 @@ int main() {
             estadoActual = 0; 
         }
 
-        // Forzar la vista estática normal al inicio de cada frame
-        window.setView(window.getDefaultView());
+        // Limpieza de pantalla
         window.clear(sf::Color::Black);
 
         if (estadoActual == 0) {
+            window.setView(window.getDefaultView()); 
             if (tieneFondo) { spriteFondo.setColor(sf::Color(255, 255, 255, 255)); window.draw(spriteFondo); }
 
             if (teclaArriba) {
@@ -161,6 +163,7 @@ int main() {
             window.draw(txtMenuInstrucciones);
         }
         else if (estadoActual == 1 || estadoActual == 2 || estadoActual == 3) {
+            window.setView(window.getDefaultView());
             if (tieneFondo) { spriteFondo.setColor(sf::Color(80, 80, 80, 255)); window.draw(spriteFondo); }
 
             if (estadoActual == 1) { 
@@ -201,13 +204,14 @@ int main() {
             }
         }
         else if (estadoActual == 4) { 
+            // Deja que la clase maneje de manera independiente su lógica interna y cámara
             combate.actualizar();
             
-            // Forzamos a que el renderizado de la pelea ignore cualquier cámara móvil interna
-            window.setView(window.getDefaultView());
+            // QUITAMOS el 'window.setView(window.getDefaultView());' que reseteaba todo a 0,0
             combate.dibujar(window); 
         }
         else if (estadoActual == 5) {
+            window.setView(window.getDefaultView());
             if (tieneFondo) { spriteFondo.setColor(sf::Color(60, 60, 60, 255)); window.draw(spriteFondo); }
             txtComoJugarTitulo.setPosition(1280.f / 2.f - txtComoJugarTitulo.getLocalBounds().width / 2.f, 100.f);
             txtComoJugarContenido.setPosition(1280.f / 2.f - txtComoJugarContenido.getLocalBounds().width / 2.f, 200.f);
@@ -215,6 +219,7 @@ int main() {
             window.draw(txtComoJugarContenido);
         }
         else if (estadoActual == 6) {
+            window.setView(window.getDefaultView());
             if (tieneFondo) { spriteFondo.setColor(sf::Color(60, 60, 60, 255)); window.draw(spriteFondo); }
             txtConfigTitulo.setPosition(1280.f / 2.f - txtConfigTitulo.getLocalBounds().width / 2.f, 120.f);
             txtConfigContenido.setPosition(1280.f / 2.f - txtConfigContenido.getLocalBounds().width / 2.f, 260.f);

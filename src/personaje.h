@@ -4,56 +4,59 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 
-// Enumeración para controlar las animaciones y estados del luchador
-enum class Estado {
-    IDLE,
-    ATACANDO,
-    HERIDO,
-    DERROTADO
-};
-
 class Personaje {
 private:
-    sf::Texture textura;
-    sf::Sprite sprite;
+    sf::CircleShape cuerpoShape; 
+    sf::Vector2f posicion;
+    sf::Vector2f velocidad;
+    bool enElSuelo;
+    bool estaAgachado;
+    float radioOriginal;
+    sf::Color colorBase;
+
+    // Sistema de Vida estilo KOF
+    float vida;
     
-    // Variables de atributos lógicos
-    int vida;
+    // Identidad del luchador
     std::string nombre;
-    Estado estadoActual;
-    bool esJugador1;
+    std::string rutaAvatar;
 
-    // Coordenadas actuales en la pantalla
-    float posX;
-    float posY;
+    // Sistema de Estados de Ataque
+    bool estaAtacando;
+    bool esSuperAtaque; // Para el estado especial con la tecla E
+    int tipoAtaque; 
+    sf::Clock relojAtaque;
+    const float DURACION_ATAQUE = 0.2f; 
 
-    // Control de tiempo para los estados temporales (como ataques)
-    sf::Clock relojEstado;
+    // Constantes físicas internas
+    const float GRAVEDAD = 0.6f;
+    const float FUERZA_SALTO = -14.f;
+    const float VEL_CAMINAR = 5.f;
+    const float ALTURA_SUELO = 600.f; 
 
 public:
     Personaje();
     
-    // Inicializa texturas, escala, orientación y posición inicial
-    void inicializar(std::string rutaTextura, bool esJ1, float xInicial, float yInicial);
-    
-    // Permite que la clase CombateMusical altere la posición física del sprite de forma fluida
-    void actualizarPosicion(float nuevoX, float nuevoY);
-    
-    // Cambia el estado (animación lógica) del peleador
-    void cambiarEstado(Estado nuevoEstado);
-    
-    // Aplica daño restando puntos de vida
-    void recibirDanio(int cantidad);
-    
-    // Getters esenciales
-    int getVida() const;
-    Estado getEstado() const;
+    void inicializar(std::string nombrePeleador, std::string rutaImg, sf::Color color, float xInicial);
+    void caminar(float direccion); 
+    void saltar();
+    void setAgachado(bool agachado);
+    void lanzarAtaque(int tipo);
 
-    // Actualiza las lógicas internas de tiempo y colores por frame
     void actualizar();
-    
-    // Renderiza el sprite actual en la ventana
-    void dibujar(sf::RenderWindow& ventana);
+    void dibujar(sf::RenderWindow& window);
+
+    float getPosicionX() const;
+    void corregirPosicionX(float deltaX);
+    bool getEstaAgachado() const;
+    bool getEstaAtacando() const;
+    bool getEsSuperAtaque() const;
+    int getTipoAtaque() const;
+    float getVida() const;
+    std::string getNombre() const; 
+    std::string getRutaAvatar() const;
+    void recibirDanio(float cantidad);
+    void curarVida(float cantidad);
 };
 
-#endif // PERSONAJE_H
+#endif
