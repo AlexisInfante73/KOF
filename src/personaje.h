@@ -4,59 +4,111 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 
+// --- CONSTANTES DEL JUEGO ---
+#ifndef ALTURA_SUELO
+#define ALTURA_SUELO 500.f
+#endif
+#ifndef VEL_CAMINAR
+#define VEL_CAMINAR 5.f
+#endif
+#ifndef VEL_SPRINT
+#define VEL_SPRINT 9.f
+#endif
+#ifndef VEL_RODADA
+#define VEL_RODADA 7.f
+#endif
+#ifndef FUERZA_SALTO
+#define FUERZA_SALTO -15.f
+#endif
+#ifndef GRAVEDAD
+#define GRAVEDAD 0.5f
+#endif
+#ifndef DURACION_RODADA
+#define DURACION_RODADA 0.5f
+#endif
+#ifndef DURACION_ATAQUE
+#define DURACION_ATAQUE 0.3f
+#endif
+
 class Personaje {
 private:
-    sf::CircleShape cuerpoShape; 
-    sf::Vector2f posicion;
-    sf::Vector2f velocidad;
+    // --- ATRIBUTOS DE CONFIGURACIÓN Y ESTADO ---
+    float radioOriginal;
     bool enElSuelo;
     bool estaAgachado;
-    float radioOriginal;
-    sf::Color colorBase;
-
-    // Sistema de Vida estilo KOF
+    bool estaAtacando;
+    bool estaRodando;
+    float direccionRodada;
+    bool esSuperAtaque;
+    int tipoAtaque;
     float vida;
-    
-    // Identidad del luchador
     std::string nombre;
     std::string rutaAvatar;
+    
+    // --- COMBATE AÉREO (NUEVO - Solución a errores de compilación) ---
+    bool estaEnElAire;
+    bool estaAtacandoAire;
+    int tipoAtaqueAire;
+    
+    // --- ATURDIMIENTO Y LANZAMIENTO ---
+    bool estaAturdido;
+    float tiempoAturdimiento;
+    
+    // --- FÍSICAS Y POSICIÓN ---
+    sf::Vector2f posicion;
+    sf::Vector2f velocidad;
+    
+    // --- VARIABLES PARA EL SPRINT (DOBLE TOQUE) ---
+    bool presionoIzquierdaAntes;
+    bool presionoDerechaAntes;
+    float tiempoLimiteDobleToque;
+    bool estaCorriendo;
 
-    // Sistema de Estados de Ataque
-    bool estaAtacando;
-    bool esSuperAtaque; // Para el estado especial con la tecla E
-    int tipoAtaque; 
+    // --- COMPONENTES GRÁFICOS Y RELOJES ---
+    sf::CircleShape cuerpoShape;
+    sf::Color colorBase;
+    sf::Clock relojDobleToque;
+    sf::Clock relojRodada;
     sf::Clock relojAtaque;
-    const float DURACION_ATAQUE = 0.2f; 
-
-    // Constantes físicas internas
-    const float GRAVEDAD = 0.6f;
-    const float FUERZA_SALTO = -14.f;
-    const float VEL_CAMINAR = 5.f;
-    const float ALTURA_SUELO = 600.f; 
+    sf::Clock relojAturdimiento; 
 
 public:
     Personaje();
     
     void inicializar(std::string nombrePeleador, std::string rutaImg, sf::Color color, float xInicial);
-    void caminar(float direccion); 
+    void verificarDobleToque(sf::Event& evento, float xRival);
+    void caminar(float direccion, bool correr = false); 
     void saltar();
     void setAgachado(bool agachado);
     void lanzarAtaque(int tipo);
-
+    void lanzarAtaqueAereo(int tipo); // Solución para CombateMusical
     void actualizar();
     void dibujar(sf::RenderWindow& window);
-
-    float getPosicionX() const;
     void corregirPosicionX(float deltaX);
+    
+    // --- SISTEMA DE DAÑO Y COMBOS ---
+    void recibirDanio(float cantidad);
+    void curarVida(float cantidad);
+    void aplicarAturdimiento(float duracion); 
+    void serLanzado(float fuerzaX, float fuerzaY); 
+
+    // --- GETTERS ---
+    float getPosicionX() const;
     bool getEstaAgachado() const;
     bool getEstaAtacando() const;
     bool getEsSuperAtaque() const;
     int getTipoAtaque() const;
+    bool getEstaRodando() const;
+    bool getEstaCorriendo() const;
+    bool getEstaAturdido() const; 
     float getVida() const;
-    std::string getNombre() const; 
+    std::string getNombre() const;
     std::string getRutaAvatar() const;
-    void recibirDanio(float cantidad);
-    void curarVida(float cantidad);
+    
+    // --- GETTERS AÉREOS (Solución para CombateMusical) ---
+    bool getEstaEnElAire() const;
+    bool getEstaAtacandoAire() const;
+    int getTipoAtaqueAire() const;
 };
 
-#endif
+#endif // PERSONAJE_H

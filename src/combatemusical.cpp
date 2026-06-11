@@ -185,19 +185,42 @@ void CombateMusical::cargarAvatarsUI() {
 }
 
 void CombateMusical::procesarEntrada(sf::Event& evento) {
-    if (rondaTerminada) return; 
+    if (rondaTerminada || indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) return; 
+
+    float xBot = equipoJ2[indiceActivoJ2].getPosicionX();
+    auto& jugador = equipoJ1[indiceActivoJ1];
+    jugador.verificarDobleToque(evento, xBot);
+
     if (evento.type == sf::Event::KeyPressed) {
-        if (evento.key.code == sf::Keyboard::Space) equipoJ1[indiceActivoJ1].saltar();
+        if (evento.key.code == sf::Keyboard::Space) jugador.saltar();
         
-        if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
-        if (evento.key.code == sf::Keyboard::J) { equipoJ1[indiceActivoJ1].lanzarAtaque(2); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
-        if (evento.key.code == sf::Keyboard::K) { equipoJ1[indiceActivoJ1].lanzarAtaque(3); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
-        if (evento.key.code == sf::Keyboard::L) { equipoJ1[indiceActivoJ1].lanzarAtaque(4); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
+        // --- DETECCIÓN UNIFICADA DE ATAQUES (SUELO / AIRE) ---
+        if (evento.key.code == sf::Keyboard::H || evento.key.code == sf::Keyboard::J || 
+            evento.key.code == sf::Keyboard::K || evento.key.code == sf::Keyboard::L) {
+            
+            int tipo = 1;
+            if (evento.key.code == sf::Keyboard::H) tipo = 1;
+            if (evento.key.code == sf::Keyboard::J) tipo = 2;
+            if (evento.key.code == sf::Keyboard::K) tipo = 3;
+            if (evento.key.code == sf::Keyboard::L) tipo = 4;
+
+            // Si el personaje está saltando, ejecuta el ataque de aire
+            if (jugador.getEstaEnElAire()) {
+                jugador.lanzarAtaqueAereo(tipo); 
+                golpeImpactadoEsteTurno = false;
+            } 
+            // Si está firme en el suelo, ejecuta el ataque terrestre convencional
+            else {
+                jugador.lanzarAtaque(tipo); 
+                golpeImpactadoEsteTurno = false; 
+                acumularEnergiaJ1(1.f); 
+            }
+        }
         
         if (evento.key.code == sf::Keyboard::E) {
-            if (nivelesJ1 >= 1 && !equipoJ1[indiceActivoJ1].getEstaAtacando()) {
+            if (nivelesJ1 >= 1 && !jugador.getEstaAtacando() && !jugador.getEstaEnElAire()) {
                 nivelesJ1--; 
-                equipoJ1[indiceActivoJ1].lanzarAtaque(5); 
+                jugador.lanzarAtaque(5); 
                 golpeImpactadoEsteTurno = false;
             }
         }
@@ -304,6 +327,13 @@ void CombateMusical::actualizarIABot() {
 }
 
 void CombateMusical::actualizar() {
+    // --- CONTROL DE TRASPASO DE HITBOX DURANTE LANZAMIENTOS ---
+    static sf::Clock relojColisionThrow;
+    static bool throwActivo = false;
+    if (throwActivo && relojColisionThrow.getElapsedTime().asSeconds() > 0.5f) {
+        throwActivo = false;
+    }
+
     if (rondaTerminada) {
         if (relojEsperaRonda.getElapsedTime().asSeconds() >= 3.0f) {
             if (indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) { reiniciarRelojes(2); return; }
@@ -321,9 +351,18 @@ void CombateMusical::actualizar() {
 
     if (indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) return;
 
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) equipoJ1[indiceActivoJ1].caminar(-1.f);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) equipoJ1[indiceActivoJ1].caminar(1.f);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) equipoJ1[indiceActivoJ1].setAgachado(true); else equipoJ1[indiceActivoJ1].setAgachado(false);
+    bool quiereCorrer = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift);
+
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+        equipoJ1[indiceActivoJ1].setAgachado(true);
+    } else {
+        equipoJ1[indiceActivoJ1].setAgachado(false);
+    }
+
+    if (!equipoJ1[indiceActivoJ1].getEstaCorriendo()) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) equipoJ1[indiceActivoJ1].caminar(-1.f, quiereCorrer);
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) equipoJ1[indiceActivoJ1].caminar(1.f, quiereCorrer);
+    }
 
     actualizarIABot();
     equipoJ1[indiceActivoJ1].actualizar();
@@ -331,81 +370,190 @@ void CombateMusical::actualizar() {
 
     float x1 = equipoJ1[indiceActivoJ1].getPosicionX();
     float x2 = equipoJ2[indiceActivoJ2].getPosicionX();
-    if (std::abs(x1 - x2) < 80.f) {
-        float solapamiento = 80.f - std::abs(x1 - x2);
-        float dir = (x1 < x2) ? -1.f : 1.f;
-        equipoJ1[indiceActivoJ1].corregirPosicionX(dir * solapamiento / 2.f);
-        equipoJ2[indiceActivoJ2].corregirPosicionX(-dir * solapamiento / 2.f);
-    }
-
-    bool j2EnGuardia = false;
-    if (botQuiereDefenderse) j2EnGuardia = true;
-
-    // --- PROCESAMIENTO DE DAÑO JUGADOR 1 AL BOT ---
-    if (equipoJ1[indiceActivoJ1].getEstaAtacando() && !golpeImpactadoEsteTurno) {
-        if (std::abs(equipoJ1[indiceActivoJ1].getPosicionX() - equipoJ2[indiceActivoJ2].getPosicionX()) <= 125.f) {
-            int tipo = equipoJ1[indiceActivoJ1].getTipoAtaque();
-            bool rivalEvadiendo = equipoJ2[indiceActivoJ2].getEstaAgachado();
-            float dmg = 0.f;
-
-            if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ1(5.f); } 
-            if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ1(6.f); }
-            if (tipo == 2 && !rivalEvadiendo) { dmg = 12.f; acumularEnergiaJ1(7.f); }
-            if (tipo == 4 && !rivalEvadiendo) { dmg = 15.f; acumularEnergiaJ1(9.f); }
-            if (tipo == 5) { dmg = 45.f; } 
-
-            if (j2EnGuardia && tipo != 5) { 
-                dmg = dmg * 0.2f; 
-            }
-
-            if (dmg > 0.f) {
-                equipoJ2[indiceActivoJ2].recibirDanio(dmg);
-                acumularEnergiaJ2(6.f); 
-                
-                if (equipoJ2[indiceActivoJ2].getVida() <= 0.f) {
-                    // SE CORRIGE EL ÚLTIMO PIXEL: Vaciar la barra visual completamente en el acto
-                    barraVidaJ2.setSize(sf::Vector2f(0.f, 25.f));
-                    avanzarSiguienteRonda(1); 
-                    return; 
-                }
-            }
-            golpeImpactadoEsteTurno = true; 
+    
+    // Colisión física (Se desactiva temporalmente si hay un lanzamiento activo)
+    if (!throwActivo && !equipoJ1[indiceActivoJ1].getEstaRodando() && !equipoJ2[indiceActivoJ2].getEstaRodando()) {
+        if (std::abs(x1 - x2) < 80.f) {
+            float solapamiento = 80.f - std::abs(x1 - x2);
+            float dir = (x1 < x2) ? -1.f : 1.f;
+            equipoJ1[indiceActivoJ1].corregirPosicionX(dir * solapamiento / 2.f);
+            equipoJ2[indiceActivoJ2].corregirPosicionX(-dir * solapamiento / 2.f);
         }
     }
+
+    x1 = equipoJ1[indiceActivoJ1].getPosicionX();
+    x2 = equipoJ2[indiceActivoJ2].getPosicionX();
 
     bool j1EnGuardia = false;
     if (x1 < x2 && sf::Keyboard::isKeyPressed(sf::Keyboard::A)) j1EnGuardia = true;
     if (x1 > x2 && sf::Keyboard::isKeyPressed(sf::Keyboard::D)) j1EnGuardia = true;
 
-    // --- PROCESAMIENTO DE DAÑO BOT AL JUGADOR 1 ---
-    if (equipoJ2[indiceActivoJ2].getEstaAtacando() && !botGolpeImpactadoEsteTurno) {
-        if (std::abs(equipoJ2[indiceActivoJ2].getPosicionX() - equipoJ1[indiceActivoJ1].getPosicionX()) <= 125.f) {
-            int tipo = equipoJ2[indiceActivoJ2].getTipoAtaque();
-            bool jugador1Evadiendo = equipoJ1[indiceActivoJ1].getEstaAgachado();
-            float dmg = 0.f;
+    bool j2EnGuardia = false;
+    if (botQuiereDefenderse) j2EnGuardia = true;
 
-            if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ2(5.f); }
-            if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ2(6.f); }
-            if (tipo == 2 && !jugador1Evadiendo) { dmg = 12.f; acumularEnergiaJ2(7.f); }
-            if (tipo == 4 && !jugador1Evadiendo) { dmg = 15.f; acumularEnergiaJ2(9.f); }
-            if (tipo == 5) { dmg = 45.f; } 
+    // Cross-up / Espalda expuesta (Soporta ataques normales y aéreos)
+    if ((equipoJ1[indiceActivoJ1].getEstaAtacando() || equipoJ1[indiceActivoJ1].getEstaAtacandoAire()) && j2EnGuardia) {
+        if ((x1 > x2 && botQuiereDefenderse && (x2 > x1)) || 
+            (x1 < x2 && botQuiereDefenderse && (x2 < x1))) {
+            j2EnGuardia = false; 
+        }
+    }
+    if (equipoJ2[indiceActivoJ2].getEstaAtacando() && j1EnGuardia) {
+        if ((x2 > x1 && sf::Keyboard::isKeyPressed(sf::Keyboard::A)) || 
+            (x2 < x1 && sf::Keyboard::isKeyPressed(sf::Keyboard::D))) {
+            j1EnGuardia = false; 
+        }
+    }
 
-            if (j1EnGuardia && tipo != 5) {
-                dmg = dmg * 0.2f;
+    // =================================================================
+    // --- PROCESAMIENTO DE DAÑO JUGADOR 1 AL BOT (SUELO Y AIRE) ---
+    // =================================================================
+    if ((equipoJ1[indiceActivoJ1].getEstaAtacando() || equipoJ1[indiceActivoJ1].getEstaAtacandoAire()) && !golpeImpactadoEsteTurno) {
+        float distanciaReal = std::abs(x1 - x2);
+        if (distanciaReal <= 125.f) {
+            
+            // Obtener el tipo correcto según el estado (Suelo o Aire)
+            int tipo = equipoJ1[indiceActivoJ1].getEstaAtacandoAire() ? 
+                       equipoJ1[indiceActivoJ1].getTipoAtaqueAire() : 
+                       equipoJ1[indiceActivoJ1].getTipoAtaque();
+            
+            bool presionaA = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
+            bool presionaD = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
+
+            bool presionaAtras = (x1 < x2 && presionaA) || (x1 > x2 && presionaD);
+            bool presionaAdelante = (x1 < x2 && presionaD) || (x1 > x2 && presionaA);
+            
+            // --- NUEVA LÓGICA DE AGARRE (THROW) DIRECCIONAL ---
+            // Los agarres se bloquean si el personaje está ejecutando un ataque aéreo
+            if (distanciaReal <= 85.f && !equipoJ1[indiceActivoJ1].getEstaAtacandoAire()) {
+                
+                // CASO 1: LANZAR HACIA ATRÁS (Atrás + Golpe Alto 'K')
+                if (presionaAtras && tipo == 3) {
+                    equipoJ2[indiceActivoJ2].recibirDanio(25.f);
+                    float fuerzaX = (x1 < x2) ? -18.f : 18.f;
+                    equipoJ2[indiceActivoJ2].serLanzado(fuerzaX, -8.f);
+                    
+                    throwActivo = true;
+                    relojColisionThrow.restart();
+                    golpeImpactadoEsteTurno = true;
+
+                    if (equipoJ2[indiceActivoJ2].getVida() <= 0.f) {
+                        barraVidaJ2.setSize(sf::Vector2f(0.f, 25.f));
+                        avanzarSiguienteRonda(1); 
+                        return; 
+                    }
+                }
+                // CASO 2: LANZAR HACIA ADELANTE (Adelante + Patada Alta 'L')
+                else if (presionaAdelante && tipo == 4) {
+                    equipoJ2[indiceActivoJ2].recibirDanio(25.f);
+                    float fuerzaX = (x1 < x2) ? 18.f : -18.f;
+                    equipoJ2[indiceActivoJ2].serLanzado(fuerzaX, -8.f);
+                    
+                    throwActivo = true;
+                    relojColisionThrow.restart();
+                    golpeImpactadoEsteTurno = true;
+
+                    if (equipoJ2[indiceActivoJ2].getVida() <= 0.f) {
+                        barraVidaJ2.setSize(sf::Vector2f(0.f, 25.f));
+                        avanzarSiguienteRonda(1); 
+                        return; 
+                    }
+                }
+            } 
+            
+            // --- GOLPE NORMAL / HITBÓX AÉREA ---
+            if (!golpeImpactadoEsteTurno) {
+                bool rivalEvadiendo = equipoJ2[indiceActivoJ2].getEstaAgachado();
+                float dmg = 0.f;
+
+                if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ1(5.f); } 
+                if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ1(6.f); }
+                if (tipo == 2 && !rivalEvadiendo) { dmg = 12.f; acumularEnergiaJ1(7.f); }
+                if (tipo == 4 && !rivalEvadiendo) { dmg = 15.f; acumularEnergiaJ1(9.f); }
+                if (tipo == 5) { dmg = 45.f; } 
+
+                if (j2EnGuardia && tipo != 5) { 
+                    dmg = dmg * 0.2f; 
+                } else if (dmg > 0.f) {
+                    float tiempoMareo = (tipo == 5) ? 0.8f : 0.4f;
+                    equipoJ2[indiceActivoJ2].aplicarAturdimiento(tiempoMareo);
+                }
+
+                if (dmg > 0.f) {
+                    equipoJ2[indiceActivoJ2].recibirDanio(dmg);
+                    acumularEnergiaJ2(6.f); 
+                    
+                    if (equipoJ2[indiceActivoJ2].getVida() <= 0.f) {
+                        barraVidaJ2.setSize(sf::Vector2f(0.f, 25.f));
+                        avanzarSiguienteRonda(1); 
+                        return; 
+                    }
+                }
+                golpeImpactadoEsteTurno = true;
             }
+        }
+    }
 
-            if (dmg > 0.f) {
-                equipoJ1[indiceActivoJ1].recibirDanio(dmg);
-                acumularEnergiaJ1(6.f); 
+    // =================================================================
+    // --- PROCESAMIENTO DE DAÑO BOT AL JUGADOR 1 ---
+    // =================================================================
+    if (equipoJ2[indiceActivoJ2].getEstaAtacando() && !botGolpeImpactadoEsteTurno) {
+        float distanciaReal = std::abs(x2 - x1);
+        if (distanciaReal <= 125.f) {
+            int tipo = equipoJ2[indiceActivoJ2].getTipoAtaque();
+            
+            // --- LÓGICA DE AGARRE PARA EL BOT ---
+            if (distanciaReal <= 85.f && (tipo == 3 || tipo == 4)) {
+                equipoJ1[indiceActivoJ1].recibirDanio(25.f);
+                
+                float fuerzaX = 0.f;
+                if (tipo == 4) {
+                    fuerzaX = (x2 < x1) ? 18.f : -18.f;
+                } else if (tipo == 3) {
+                    fuerzaX = (x2 < x1) ? -18.f : 18.f;
+                }
+                
+                equipoJ1[indiceActivoJ1].serLanzado(fuerzaX, -8.f);
+                throwActivo = true;
+                relojColisionThrow.restart();
+                botGolpeImpactadoEsteTurno = true;
                 
                 if (equipoJ1[indiceActivoJ1].getVida() <= 0.f) {
-                    // SE CORRIGE EL ÚLTIMO PIXEL: Vaciar la barra visual completamente en el acto
                     barraVidaJ1.setSize(sf::Vector2f(0.f, 25.f));
                     avanzarSiguienteRonda(2); 
                     return; 
                 }
+            } 
+            // --- GOLPE NORMAL BOT ---
+            else {
+                bool jugador1Evadiendo = equipoJ1[indiceActivoJ1].getEstaAgachado();
+                float dmg = 0.f;
+
+                if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ2(5.f); }
+                if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ2(6.f); }
+                if (tipo == 2 && !jugador1Evadiendo) { dmg = 12.f; acumularEnergiaJ2(7.f); }
+                if (tipo == 4 && !jugador1Evadiendo) { dmg = 15.f; acumularEnergiaJ2(9.f); }
+                if (tipo == 5) { dmg = 45.f; } 
+
+                if (j1EnGuardia && tipo != 5) {
+                    dmg = dmg * 0.2f;
+                } else if (dmg > 0.f) {
+                    float tiempoMareo = (tipo == 5) ? 0.8f : 0.4f;
+                    equipoJ1[indiceActivoJ1].aplicarAturdimiento(tiempoMareo);
+                }
+
+                if (dmg > 0.f) {
+                    equipoJ1[indiceActivoJ1].recibirDanio(dmg);
+                    acumularEnergiaJ1(6.f); 
+                    
+                    if (equipoJ1[indiceActivoJ1].getVida() <= 0.f) {
+                        barraVidaJ1.setSize(sf::Vector2f(0.f, 25.f));
+                        avanzarSiguienteRonda(2); 
+                        return; 
+                    }
+                }
+                botGolpeImpactadoEsteTurno = true;
             }
-            botGolpeImpactadoEsteTurno = true;
         }
     }
 
