@@ -4,21 +4,30 @@
 #include <vector>
 #include <string>
 
+// Usar un enum hace que el código sea infinitamente más legible que usar números sueltos (0, 1, 2, 3...)
+enum class EstadoApp {
+    MenuPrincipal,
+    RegistroCombatientes,
+    SeleccionPersonaje,
+    Combate,
+    ComoJugar,
+    Configuracion
+};
+
 int main() {
     sf::RenderWindow window(sf::VideoMode(1280, 720), "Leyendas del Ritmo - Arena 2D Completa");
     window.setFramerateLimit(60);
 
     CombateMusical combate;
-    int estadoActual = 0; 
-    int medallasElegidas = 1;
+    EstadoApp estadoActual = EstadoApp::MenuPrincipal;
     int opcionMenuSeleccionada = 0; 
 
     // --- CARGAR FUENTE ---
     sf::Font fuenteJuego;
     if (!fuenteJuego.loadFromFile("assets/fonts/COMIC.TTF")) {
-        std::cout << "[ADVERTENCIA]: No se cargó assets/fonts/COMIC.TTF en ruta directa." << std::endl;
+        std::cout << "[ADVERTENCIA]: No se cargó assets/fonts/COMIC.TTF en ruta directa.\n";
         if (!fuenteJuego.loadFromFile("../assets/fonts/COMIC.TTF")) {
-            std::cout << "[ERROR CRÍTICO]: No se encontró la tipografía." << std::endl;
+            std::cerr << "[ERROR CRÍTICO]: No se encontró la tipografía.\n";
         }
     }
 
@@ -27,15 +36,16 @@ int main() {
     sf::Sprite spriteFondo;
     bool tieneFondo = false;
 
-    if (texturaJuego.loadFromFile("assets/images/Juego1.png")) {
+    if (texturaJuego.loadFromFile("assets/images/Juego1.png") || 
+        texturaJuego.loadFromFile("../assets/images/Juego1.png")) {
         tieneFondo = true;
         spriteFondo.setTexture(texturaJuego);
-        spriteFondo.setScale(1280.f / texturaJuego.getSize().x, 720.f / texturaJuego.getSize().y);
-    } 
-    else if (texturaJuego.loadFromFile("../assets/images/Juego1.png")) {
-        tieneFondo = true;
-        spriteFondo.setTexture(texturaJuego);
-        spriteFondo.setScale(1280.f / texturaJuego.getSize().x, 720.f / texturaJuego.getSize().y);
+        // Protección contra división por cero si la imagen está corrupta o vacía
+        if (texturaJuego.getSize().x > 0 && texturaJuego.getSize().y > 0) {
+            spriteFondo.setScale(1280.f / texturaJuego.getSize().x, 720.f / texturaJuego.getSize().y);
+        }
+    } else {
+        std::cout << "[ADVERTENCIA]: No se cargó el fondo del menú.\n";
     }
 
     // --- TEXTOS E INSTRUCCIONES ---
@@ -78,71 +88,74 @@ int main() {
     sf::Text txtPersonajesTitulo("SELECCION DE PERSONAJE", fuenteJuego, 40);
     txtPersonajesTitulo.setFillColor(sf::Color::Magenta);
     
-    // AQUÍ CORREGIMOS: Declaración explícita de txtPersonajesSub para evitar el error de la terminal
     sf::Text txtPersonajesSub("Peleador listo.\nPresiona ENTER para ajustar la dificultad de la IA.", fuenteJuego, 26);
     txtPersonajesSub.setFillColor(sf::Color::White);
-
-    sf::Text txtMedallasTitulo("DIFICULTAD DEL RIVAL", fuenteJuego, 40);
-    txtMedallasTitulo.setFillColor(sf::Color::Yellow);
-    sf::Text txtContadorMedallas("", fuenteJuego, 34);
-    txtContadorMedallas.setFillColor(sf::Color::White);
-    sf::Text txtMedallasInstrucciones("Usa Flechas [Arriba / Abajo] para calibrar la agresividad del bot.\nPresiona [ENTER] para iniciar el combate en el suelo.", fuenteJuego, 20);
-    txtMedallasInstrucciones.setFillColor(sf::Color(180, 180, 180));
-
-    bool flechaArribaPresionada = false;
-    bool flechaAbajoPresionada = false;
 
     // --- BUCLE PRINCIPAL ---
     while (window.isOpen()) {
         sf::Event evento;
         while (window.pollEvent(evento)) {
-            if (evento.type == sf::Event::Closed) window.close();
+            if (evento.type == sf::Event::Closed) {
+                window.close();
+            }
             
-            // Redirigir eventos de salto y golpes a la arena de pelea
-            if (estadoActual == 4) {
+            // Redirigir eventos de combate
+            if (estadoActual == EstadoApp::SeleccionPersonaje || estadoActual == EstadoApp::Combate) {
                 combate.procesarEntrada(evento);
             }
             
-            if (evento.type == sf::Event::KeyReleased && evento.key.code == sf::Keyboard::Return) {
-                if (estadoActual == 0) {
-                    if (opcionMenuSeleccionada == 0) estadoActual = 1;      
-                    else if (opcionMenuSeleccionada == 1) estadoActual = 5; 
-                    else if (opcionMenuSeleccionada == 2) estadoActual = 6; 
+            // --- MANEJO DE ENTRADA POR EVENTOS (Mejor que isKeyPressed para Menús) ---
+            if (evento.type == sf::Event::KeyPressed) {
+                
+                // Botón Escape para volver al menú
+                if (evento.key.code == sf::Keyboard::Escape) {
+                    if (estadoActual == EstadoApp::ComoJugar || 
+                        estadoActual == EstadoApp::Configuracion ||
+                        estadoActual == EstadoApp::SeleccionPersonaje ||
+                        estadoActual == EstadoApp::Combate) {
+                        estadoActual = EstadoApp::MenuPrincipal;
+                    }
                 }
-                else if (estadoActual == 1) {
-                    estadoActual = 2; 
+
+                // Navegación de menús: Arriba / Abajo
+                if (evento.key.code == sf::Keyboard::Up) {
+                    if (estadoActual == EstadoApp::MenuPrincipal) {
+                        opcionMenuSeleccionada = (opcionMenuSeleccionada - 1 + 3) % 3;
+                    }
+                } 
+                else if (evento.key.code == sf::Keyboard::Down) {
+                    if (estadoActual == EstadoApp::MenuPrincipal) {
+                        opcionMenuSeleccionada = (opcionMenuSeleccionada + 1) % 3;
+                    }
                 }
-                else if (estadoActual == 2) {
-                    estadoActual = 3; 
-                }
-                else if (estadoActual == 3) {
-                    combate.reiniciarRelojes(medallasElegidas);
-                    estadoActual = 4; 
+
+                // Tecla Enter para confirmar
+                if (evento.key.code == sf::Keyboard::Enter) {
+                    switch (estadoActual) {
+                        case EstadoApp::MenuPrincipal:
+                            if (opcionMenuSeleccionada == 0) estadoActual = EstadoApp::RegistroCombatientes;      
+                            else if (opcionMenuSeleccionada == 1) estadoActual = EstadoApp::ComoJugar; 
+                            else if (opcionMenuSeleccionada == 2) estadoActual = EstadoApp::Configuracion; 
+                            break;
+                        case EstadoApp::RegistroCombatientes:
+                            estadoActual = EstadoApp::SeleccionPersonaje; 
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
         }
 
-        bool teclaArriba = sf::Keyboard::isKeyPressed(sf::Keyboard::Up);
-        bool teclaAbajo = sf::Keyboard::isKeyPressed(sf::Keyboard::Down);
-
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape) && (estadoActual == 5 || estadoActual == 6 || estadoActual == 4)) {
-            estadoActual = 0; 
-        }
-
-        // Limpieza de pantalla
+        // --- RENDERIZADO ---
         window.clear(sf::Color::Black);
 
-        if (estadoActual == 0) {
+        if (estadoActual == EstadoApp::MenuPrincipal) {
             window.setView(window.getDefaultView()); 
-            if (tieneFondo) { spriteFondo.setColor(sf::Color(255, 255, 255, 255)); window.draw(spriteFondo); }
-
-            if (teclaArriba) {
-                if (!flechaArribaPresionada) { opcionMenuSeleccionada = (opcionMenuSeleccionada - 1 + 3) % 3; flechaArribaPresionada = true; }
-            } else { flechaArribaPresionada = false; }
-
-            if (teclaAbajo) {
-                if (!flechaAbajoPresionada) { opcionMenuSeleccionada = (opcionMenuSeleccionada + 1) % 3; flechaAbajoPresionada = true; }
-            } else { flechaAbajoPresionada = false; }
+            if (tieneFondo) { 
+                spriteFondo.setColor(sf::Color(255, 255, 255, 255)); 
+                window.draw(spriteFondo); 
+            }
 
             txtOpcionAventura.setFillColor(opcionMenuSeleccionada == 0 ? sf::Color::Cyan : sf::Color::White);
             txtOpcionComoJugar.setFillColor(opcionMenuSeleccionada == 1 ? sf::Color::Cyan : sf::Color::White);
@@ -152,75 +165,51 @@ int main() {
             txtOpcionComoJugar.setString(opcionMenuSeleccionada == 1 ? "> Como Jugar <" : "Como Jugar");
             txtOpcionConfig.setString(opcionMenuSeleccionada == 2 ? "> Configuracion <" : "Configuracion");
 
-            txtOpcionAventura.setPosition(1280.f / 2.f - txtOpcionAventura.getLocalBounds().width / 2.f, 490.f);
-            txtOpcionComoJugar.setPosition(1280.f / 2.f - txtOpcionComoJugar.getLocalBounds().width / 2.f, 545.f);
-            txtOpcionConfig.setPosition(1280.f / 2.f - txtOpcionConfig.getLocalBounds().width / 2.f, 600.f);
-            txtMenuInstrucciones.setPosition(1280.f / 2.f - txtMenuInstrucciones.getLocalBounds().width / 2.f, 675.f);
+            // Centrado seguro: si no hay fuente, getLocalBounds().width será 0 y no habrá error
+            float centroX = 1280.f / 2.f;
+            txtOpcionAventura.setPosition(centroX - txtOpcionAventura.getLocalBounds().width / 2.f, 490.f);
+            txtOpcionComoJugar.setPosition(centroX - txtOpcionComoJugar.getLocalBounds().width / 2.f, 545.f);
+            txtOpcionConfig.setPosition(centroX - txtOpcionConfig.getLocalBounds().width / 2.f, 600.f);
+            txtMenuInstrucciones.setPosition(centroX - txtMenuInstrucciones.getLocalBounds().width / 2.f, 675.f);
 
             window.draw(txtOpcionAventura);
             window.draw(txtOpcionComoJugar);
             window.draw(txtOpcionConfig);
             window.draw(txtMenuInstrucciones);
         }
-        else if (estadoActual == 1 || estadoActual == 2 || estadoActual == 3) {
+        else if (estadoActual == EstadoApp::RegistroCombatientes) {
+                 
             window.setView(window.getDefaultView());
-            if (tieneFondo) { spriteFondo.setColor(sf::Color(80, 80, 80, 255)); window.draw(spriteFondo); }
-
-            if (estadoActual == 1) { 
-                txtNombresTitulo.setPosition(1280.f / 2.f - txtNombresTitulo.getLocalBounds().width / 2.f, 220.f);
-                txtNombresSub.setPosition(1280.f / 2.f - txtNombresSub.getLocalBounds().width / 2.f, 380.f);
-                window.draw(txtNombresTitulo);
-                window.draw(txtNombresSub);
+            if (tieneFondo) { 
+                spriteFondo.setColor(sf::Color(80, 80, 80, 255)); 
+                window.draw(spriteFondo); 
             }
-            else if (estadoActual == 2) { 
-                txtPersonajesTitulo.setPosition(1280.f / 2.f - txtPersonajesTitulo.getLocalBounds().width / 2.f, 220.f);
-                txtPersonajesSub.setPosition(1280.f / 2.f - txtPersonajesSub.getLocalBounds().width / 2.f, 380.f);
-                window.draw(txtPersonajesTitulo);
-                window.draw(txtPersonajesSub);
-            }
-            else if (estadoActual == 3) { 
-                if (teclaArriba) {
-                    if (!flechaArribaPresionada) { if (medallasElegidas < 5) medallasElegidas++; flechaArribaPresionada = true; }
-                } else { flechaArribaPresionada = false; }
-
-                if (teclaAbajo) {
-                    if (!flechaAbajoPresionada) { if (medallasElegidas > 1) medallasElegidas--; flechaAbajoPresionada = true; }
-                } else { flechaAbajoPresionada = false; }
-
-                std::string nivelIA = "FACIL";
-                if (medallasElegidas == 2) nivelIA = "NORMAL";
-                if (medallasElegidas == 3) nivelIA = "DIFICIL";
-                if (medallasElegidas == 4) nivelIA = "EXPERTO";
-                if (medallasElegidas == 5) nivelIA = "PESADILLA";
-                txtContadorMedallas.setString("< AGRESIVIDAD DEL ENEMIGO: " + nivelIA + " >");
-
-                txtMedallasTitulo.setPosition(1280.f / 2.f - txtMedallasTitulo.getLocalBounds().width / 2.f, 200.f);
-                txtContadorMedallas.setPosition(1280.f / 2.f - txtContadorMedallas.getLocalBounds().width / 2.f, 340.f);
-                txtMedallasInstrucciones.setPosition(1280.f / 2.f - txtMedallasInstrucciones.getLocalBounds().width / 2.f, 490.f);
-
-                window.draw(txtMedallasTitulo);
-                window.draw(txtContadorMedallas);
-                window.draw(txtMedallasInstrucciones);
-            }
+            txtNombresTitulo.setPosition(1280.f / 2.f - txtNombresTitulo.getLocalBounds().width / 2.f, 220.f);
+            txtNombresSub.setPosition(1280.f / 2.f - txtNombresSub.getLocalBounds().width / 2.f, 380.f);
+            window.draw(txtNombresTitulo);
+            window.draw(txtNombresSub);
         }
-        else if (estadoActual == 4) { 
-            // Deja que la clase maneje de manera independiente su lógica interna y cámara
+        else if (estadoActual == EstadoApp::SeleccionPersonaje || estadoActual == EstadoApp::Combate) { 
             combate.actualizar();
-            
-            // QUITAMOS el 'window.setView(window.getDefaultView());' que reseteaba todo a 0,0
             combate.dibujar(window); 
         }
-        else if (estadoActual == 5) {
+        else if (estadoActual == EstadoApp::ComoJugar) {
             window.setView(window.getDefaultView());
-            if (tieneFondo) { spriteFondo.setColor(sf::Color(60, 60, 60, 255)); window.draw(spriteFondo); }
+            if (tieneFondo) { 
+                spriteFondo.setColor(sf::Color(60, 60, 60, 255)); 
+                window.draw(spriteFondo); 
+            }
             txtComoJugarTitulo.setPosition(1280.f / 2.f - txtComoJugarTitulo.getLocalBounds().width / 2.f, 100.f);
             txtComoJugarContenido.setPosition(1280.f / 2.f - txtComoJugarContenido.getLocalBounds().width / 2.f, 200.f);
             window.draw(txtComoJugarTitulo);
             window.draw(txtComoJugarContenido);
         }
-        else if (estadoActual == 6) {
+        else if (estadoActual == EstadoApp::Configuracion) {
             window.setView(window.getDefaultView());
-            if (tieneFondo) { spriteFondo.setColor(sf::Color(60, 60, 60, 255)); window.draw(spriteFondo); }
+            if (tieneFondo) { 
+                spriteFondo.setColor(sf::Color(60, 60, 60, 255)); 
+                window.draw(spriteFondo); 
+            }
             txtConfigTitulo.setPosition(1280.f / 2.f - txtConfigTitulo.getLocalBounds().width / 2.f, 120.f);
             txtConfigContenido.setPosition(1280.f / 2.f - txtConfigContenido.getLocalBounds().width / 2.f, 260.f);
             window.draw(txtConfigTitulo);

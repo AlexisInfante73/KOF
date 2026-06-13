@@ -1,24 +1,33 @@
 #include "combatemusical.h"
 #include <iostream>
-#include <cstdlib>
-#include <ctime>
 #include <cmath>
+#include <random> // Uso de random moderno en lugar de std::rand
 
 CombateMusical::CombateMusical() {
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
+    // Generación de números aleatorios moderna y segura
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distEscenario(1, 4);
     
-    // Escenario aleatorio para la pelea posterior
-    int escenarioAleatorio = (std::rand() % 4) + 1;
+    int escenarioAleatorio = distEscenario(gen);
     std::string rutaFondo = "assets/images/fondo_batalla_" + std::to_string(escenarioAleatorio) + ".png";
 
     if (!texturaEscenario.loadFromFile(rutaFondo)) {
-        texturaEscenario.loadFromFile("../" + rutaFondo);
+        if (!texturaEscenario.loadFromFile("../" + rutaFondo)) {
+            std::cerr << "ERROR: No se pudo cargar la textura del escenario: " << rutaFondo << "\n";
+        }
     }
-    spriteEscenario.setTexture(texturaEscenario);
-    spriteEscenario.setScale(1280.f / texturaEscenario.getSize().x, 720.f / texturaEscenario.getSize().y);
+    
+    // Evitar división por cero si la textura no carga
+    if (texturaEscenario.getSize().x > 0 && texturaEscenario.getSize().y > 0) {
+        spriteEscenario.setTexture(texturaEscenario);
+        spriteEscenario.setScale(1280.f / texturaEscenario.getSize().x, 720.f / texturaEscenario.getSize().y);
+    }
 
     if (!fuenteUI.loadFromFile("assets/fonts/COMIC.TTF")) {
-        fuenteUI.loadFromFile("../assets/fonts/COMIC.TTF");
+        if (!fuenteUI.loadFromFile("../assets/fonts/COMIC.TTF")) {
+            std::cerr << "ERROR: No se pudo cargar la fuente COMIC.TTF\n";
+        }
     }
 
     // --- CRONÓMETRO CENTRAL ---
@@ -35,7 +44,7 @@ CombateMusical::CombateMusical() {
     txtAnuncioKO.setOutlineColor(sf::Color::Black);
     txtAnuncioKO.setOutlineThickness(4.f);
 
-    // --- TEXTOS DE RESERVA (TAMAÑO MÁXIMO ARCADE DE 48) ---
+    // --- TEXTOS DE RESERVA ---
     for (int i = 0; i < 3; i++) {
         txtReservaJ1[i].setFont(fuenteUI);
         txtReservaJ1[i].setCharacterSize(48); 
@@ -122,44 +131,64 @@ CombateMusical::CombateMusical() {
     energiaJ1 = 0.f; energiaJ2 = 0.f;
     nivelesJ1 = 0;   nivelesJ2 = 0;
 
+    // --- INICIALIZAR TEXTOS DE COMBO ---
+    hitsJ1 = 0;
+    hitsJ2 = 0;
+
+    txtComboJ1.setFont(fuenteUI);
+    txtComboJ1.setCharacterSize(55);
+    txtComboJ1.setFillColor(sf::Color(255, 165, 0)); // Naranja brillante
+    txtComboJ1.setOutlineColor(sf::Color::Black);
+    txtComboJ1.setOutlineThickness(3.f);
+    txtComboJ1.setPosition(150.f, 150.f);
+
+    txtComboJ2.setFont(fuenteUI);
+    txtComboJ2.setCharacterSize(55);
+    txtComboJ2.setFillColor(sf::Color(255, 165, 0));
+    txtComboJ2.setOutlineColor(sf::Color::Black);
+    txtComboJ2.setOutlineThickness(3.f);
+    txtComboJ2.setPosition(1280.f - 350.f, 150.f);
+
     golpeImpactadoEsteTurno = false;
     botGolpeImpactadoEsteTurno = false;
     rondaTerminada = false;
     floatProximaDecision = 0.3f;
     botQuiereAgacharse = false;
     botQuiereDefenderse = false; 
+    
+    indiceActivoJ1 = 0;
+    indiceActivoJ2 = 0;
 
-    // Ajustar tamaños de almacenamiento
-    equipoJ1.resize(3);
-    equipoJ2.resize(3);
-
-    // --- ARRANCAR EN LA PANTALLA DE SELECCIÓN ---
     estadoActual = EstadoJuego::SeleccionPersonajes;
     inicializarPantallaSeleccion();
 }
 
 void CombateMusical::inicializarPantallaSeleccion() {
     if (!texturaSeleccion.loadFromFile("assets/images/fondo_seleccion.png")) {
-        texturaSeleccion.loadFromFile("../assets/images/fondo_seleccion.png");
+        if (!texturaSeleccion.loadFromFile("../assets/images/fondo_seleccion.png")) {
+            std::cerr << "ERROR: No se pudo cargar el fondo de seleccion.\n";
+        }
     }
-    spriteSeleccion.setTexture(texturaSeleccion);
-    spriteSeleccion.setScale(1280.f / texturaSeleccion.getSize().x, 720.f / texturaSeleccion.getSize().y);
+    
+    // Evitar división por cero si la textura no carga
+    if (texturaSeleccion.getSize().x > 0 && texturaSeleccion.getSize().y > 0) {
+        spriteSeleccion.setTexture(texturaSeleccion);
+        spriteSeleccion.setScale(1280.f / texturaSeleccion.getSize().x, 720.f / texturaSeleccion.getSize().y);
+    }
 
-    // Calibrado a las dimensiones exactas de tus tarjetas arcade (74x115 píxeles)
     selectorCuadrula.setSize(sf::Vector2f(74.f, 115.f));
     selectorCuadrula.setFillColor(sf::Color::Transparent);
-    selectorCuadrula.setOutlineColor(sf::Color::Cyan); // Inicia J1 (Cyan)
+    selectorCuadrula.setOutlineColor(sf::Color::Cyan); 
     selectorCuadrula.setOutlineThickness(4.f);
 
     filaSeleccionada = 0;
     colSeleccionada = 0;
 
-    tiempoSeleccionRestante = 15.f; // Ajustado a tus 15 segundos del .h
+    tiempoSeleccionRestante = 15.f; 
     txtTiempoSeleccion.setFont(fuenteUI);
     txtTiempoSeleccion.setCharacterSize(42);
-    txtTiempoSeleccion.setFillColor(sf::Color(0, 255, 255)); // Cyan neón digital
+    txtTiempoSeleccion.setFillColor(sf::Color(0, 255, 255)); 
 
-    // Limpiamos los contenedores dinámicos para que no tengan basura previa
     equipoJ1.clear();
     equipoJ2.clear();
     relojSeleccion.restart();
@@ -168,7 +197,6 @@ void CombateMusical::inicializarPantallaSeleccion() {
 void CombateMusical::procesarEntrada(sf::Event& evento) {
     if (estadoActual == EstadoJuego::SeleccionPersonajes) {
         if (evento.type == sf::Event::KeyPressed) {
-            // Movimiento por la matriz 2x6
             if (evento.key.code == sf::Keyboard::Left || evento.key.code == sf::Keyboard::A) {
                 if (colSeleccionada > 0) colSeleccionada--;
             }
@@ -182,7 +210,6 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
                 if (filaSeleccionada < 1) filaSeleccionada++;
             }
 
-            // Confirmación de selección (Enter / Espacio)
             if (evento.key.code == sf::Keyboard::Enter || evento.key.code == sf::Keyboard::Space) {
                 std::vector<std::string> listaNombres = {
                     "KYO", "TERRY", "RYO", "IORI", "KULA", "K'",
@@ -191,42 +218,69 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
                 int indice = (filaSeleccionada * 6) + colSeleccionada;
                 std::string nombreElegido = listaNombres[indice];
 
-                // Llenar primero el equipo del Jugador 1
                 if (equipoJ1.size() < 3) {
-                    Personaje p;
-                    p.inicializar(nombreElegido, "assets/portraits/" + nombreElegido + ".png", sf::Color::Cyan, 300.f);
-                    equipoJ1.push_back(p);
-                    
-                    if (equipoJ1.size() == 3) {
-                        selectorCuadrula.setOutlineColor(sf::Color::Red); // El cursor cambia a rojo para el Bot
+                    // Evitar elegir al mismo personaje varias veces en el mismo equipo
+                    bool yaElegido = false;
+                    for (const auto& p_existente : equipoJ1) {
+                        if (p_existente.getNombre() == nombreElegido) {
+                            yaElegido = true;
+                            break;
+                        }
                     }
-                }
-                // Luego llenar el equipo del Bot (J2)
-                else if (equipoJ2.size() < 3) {
-                    Personaje p;
-                    p.inicializar(nombreElegido, "assets/portraits/" + nombreElegido + ".png", sf::Color::Red, 980.f);
-                    equipoJ2.push_back(p);
 
-                    if (equipoJ2.size() == 3) {
-                        // Selección lista -> Disparar e iniciar el combate en sí
-                        reiniciarRelojes(2);
+                    if (!yaElegido) {
+                        Personaje p;
+                        p.inicializar(nombreElegido, "assets/portraits/" + nombreElegido + ".png", sf::Color::Cyan, 300.f);
+                        equipoJ1.push_back(p);
+                    }
+
+                    // Al completar el equipo J1, el CPU elige automáticamente
+                    if (equipoJ1.size() == 3) {
+                        std::vector<std::string> listaPosibles = {
+                            "KYO", "TERRY", "RYO", "IORI", "KULA", "K'",
+                            "MAI", "ATHENA", "KIM", "JOE", "BENIMARU", "CHIZURU"
+                        };
+                        std::random_device rd;
+                        std::mt19937 gen(rd());
+                        std::uniform_int_distribution<> distAuto(0, 11);
+
+                        while (equipoJ2.size() < 3) {
+                            int randIdx = distAuto(gen);
+                            std::string nombreBot = listaPosibles[randIdx];
+
+                            bool botYaElegido = false;
+                            for (const auto& b_existente : equipoJ2) {
+                                if (b_existente.getNombre() == nombreBot) {
+                                    botYaElegido = true;
+                                    break;
+                                }
+                            }
+
+                            if (!botYaElegido) {
+                                Personaje bot;
+                                bot.inicializar(nombreBot, "assets/portraits/" + nombreBot + ".png", sf::Color::Red, 980.f);
+                                equipoJ2.push_back(bot);
+                            }
+                        }
+
+                        reiniciarRelojes();
                         estadoActual = EstadoJuego::Combate;
                     }
                 }
             }
         }
-        return; // Detener procesamiento para que las teclas de selección no afecten la pelea
+        return; 
     }
 
-    // --- ENTRADAS DURANTE EL COMBATE (PROPIO DE TU CÓDIGO) ---
     if (rondaTerminada) return; 
+    
     if (evento.type == sf::Event::KeyPressed) {
         if (evento.key.code == sf::Keyboard::Space) equipoJ1[indiceActivoJ1].saltar();
         
-        if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
-        if (evento.key.code == sf::Keyboard::J) { equipoJ1[indiceActivoJ1].lanzarAtaque(2); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
-        if (evento.key.code == sf::Keyboard::K) { equipoJ1[indiceActivoJ1].lanzarAtaque(3); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
-        if (evento.key.code == sf::Keyboard::L) { equipoJ1[indiceActivoJ1].lanzarAtaque(4); golpeImpactadoEsteTurno = false; acumularEnergiaJ1(1.f); }
+        if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; }
+        if (evento.key.code == sf::Keyboard::J) { equipoJ1[indiceActivoJ1].lanzarAtaque(2); golpeImpactadoEsteTurno = false; }
+        if (evento.key.code == sf::Keyboard::K) { equipoJ1[indiceActivoJ1].lanzarAtaque(3); golpeImpactadoEsteTurno = false; }
+        if (evento.key.code == sf::Keyboard::L) { equipoJ1[indiceActivoJ1].lanzarAtaque(4); golpeImpactadoEsteTurno = false; }
         
         if (evento.key.code == sf::Keyboard::E) {
             if (nivelesJ1 >= 1 && !equipoJ1[indiceActivoJ1].getEstaAtacando()) {
@@ -239,23 +293,40 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
 }
 
 void CombateMusical::actualizar() {
+    // Almacenamos el deltaTime, pero ya no lo pasamos a caminar()
+    float deltaTime = relojDeltaTime.restart().asSeconds();
+
     if (estadoActual == EstadoJuego::SeleccionPersonajes) {
-        // Manejo del contador regresivo de selección
         if (relojSeleccion.getElapsedTime().asSeconds() >= 1.f) {
             if (tiempoSeleccionRestante > 0.f) {
                 tiempoSeleccionRestante -= 1.f;
             } else {
-                // Autocompletado aleatorio en caso de agotarse el tiempo
                 std::vector<std::string> listaReserva = {"KYO", "TERRY", "RYO", "IORI", "KULA", "K'"};
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<> distAuto(0, 5);
+
                 while(equipoJ1.size() < 3) {
-                    Personaje p; p.inicializar(listaReserva[std::rand()%6], "", sf::Color::Cyan, 300.f);
-                    equipoJ1.push_back(p);
+                    std::string nom = listaReserva[distAuto(gen)];
+                    bool existe = false;
+                    for (const auto& pj : equipoJ1) if (pj.getNombre() == nom) existe = true;
+                    if (!existe) {
+                        Personaje p; 
+                        p.inicializar(nom, "", sf::Color::Cyan, 300.f);
+                        equipoJ1.push_back(p);
+                    }
                 }
                 while(equipoJ2.size() < 3) {
-                    Personaje p; p.inicializar(listaReserva[std::rand()%6], "", sf::Color::Red, 980.f);
-                    equipoJ2.push_back(p);
+                    std::string nom = listaReserva[distAuto(gen)];
+                    bool existe = false;
+                    for (const auto& pj : equipoJ2) if (pj.getNombre() == nom) existe = true;
+                    if (!existe) {
+                        Personaje p; 
+                        p.inicializar(nom, "", sf::Color::Red, 980.f);
+                        equipoJ2.push_back(p);
+                    }
                 }
-                reiniciarRelojes(2);
+                reiniciarRelojes();
                 estadoActual = EstadoJuego::Combate;
             }
             relojSeleccion.restart();
@@ -265,11 +336,9 @@ void CombateMusical::actualizar() {
         return; 
     }
 
-    // --- ACTUALIZACIÓN DURANTE EL COMBATE ---
     if (rondaTerminada) {
         if (relojEsperaRonda.getElapsedTime().asSeconds() >= 3.0f) {
             if (indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) { 
-                // Fin del juego: Volver a selección
                 inicializarPantallaSeleccion(); 
                 return; 
             }
@@ -287,9 +356,12 @@ void CombateMusical::actualizar() {
 
     if (indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) return;
 
+    // --- CORRECCIÓN DE MOVIMIENTO JUGADOR 1 ---
+    // Quitamos la multiplicación por deltaTime aquí para que reciba la dirección pura.
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) equipoJ1[indiceActivoJ1].caminar(-1.f);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) equipoJ1[indiceActivoJ1].caminar(1.f);
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) equipoJ1[indiceActivoJ1].setAgachado(true); else equipoJ1[indiceActivoJ1].setAgachado(false);
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) equipoJ1[indiceActivoJ1].setAgachado(true); 
+    else equipoJ1[indiceActivoJ1].setAgachado(false);
 
     actualizarIABot();
     equipoJ1[indiceActivoJ1].actualizar();
@@ -327,9 +399,17 @@ void CombateMusical::actualizar() {
             if (dmg > 0.f) {
                 equipoJ2[indiceActivoJ2].recibirDanio(dmg);
                 acumularEnergiaJ2(6.f); 
+
+                // Lógica de hits J1
+                hitsJ1++;
+                relojComboJ1.restart();
+                txtComboJ1.setString(std::to_string(hitsJ1) + " HITS!");
                 
+                // Si el J1 golpea con éxito, se rompe el combo del J2
+                hitsJ2 = 0;
+
                 if (equipoJ2[indiceActivoJ2].getVida() <= 0.f) {
-                    barraVidaJ2.setSize(sf::Vector2f(0.f, 25.f)); // Forzado de vaciado instantáneo
+                    barraVidaJ2.setSize(sf::Vector2f(0.f, 25.f)); 
                     avanzarSiguienteRonda(1); 
                     return; 
                 }
@@ -362,9 +442,17 @@ void CombateMusical::actualizar() {
             if (dmg > 0.f) {
                 equipoJ1[indiceActivoJ1].recibirDanio(dmg);
                 acumularEnergiaJ1(6.f); 
+
+                // Lógica de hits J2
+                hitsJ2++;
+                relojComboJ2.restart();
+                txtComboJ2.setString(std::to_string(hitsJ2) + " HITS!");
                 
+                // Si el J2 golpea con éxito, se rompe el combo del J1
+                hitsJ1 = 0;
+
                 if (equipoJ1[indiceActivoJ1].getVida() <= 0.f) {
-                    barraVidaJ1.setSize(sf::Vector2f(0.f, 25.f)); // Forzado de vaciado instantáneo
+                    barraVidaJ1.setSize(sf::Vector2f(0.f, 25.f)); 
                     avanzarSiguienteRonda(2); 
                     return; 
                 }
@@ -373,7 +461,15 @@ void CombateMusical::actualizar() {
         }
     }
 
-    // --- ACTUALIZACIÓN ESTÁNDAR DE LAS BARRAS EN TIEMPO REAL ---
+    // --- REINICIAR CONTADORES DE COMBO POR TIEMPO ---
+    if (hitsJ1 > 0 && relojComboJ1.getElapsedTime().asSeconds() > 1.2f) {
+        hitsJ1 = 0;
+    }
+    if (hitsJ2 > 0 && relojComboJ2.getElapsedTime().asSeconds() > 1.2f) {
+        hitsJ2 = 0;
+    }
+
+    // --- ACTUALIZACIÓN DE BARRAS DE VIDA Y ENERGÍA ---
     float vidaJ1Proporcional = (equipoJ1[indiceActivoJ1].getVida() / 250.f) * 420.f;
     barraVidaJ1.setSize(sf::Vector2f(vidaJ1Proporcional > 0.f ? vidaJ1Proporcional : 0.f, 25.f));
     
@@ -404,11 +500,10 @@ void CombateMusical::actualizar() {
     txtNombreJ2.setString(equipoJ2[indiceActivoJ2].getNombre());
     txtNombreJ2.setPosition(1280.f - 135.f - txtNombreJ2.getLocalBounds().width, 2.f); 
     
-    // --- DISTRIBUCIÓN VERTICAL COMPACTADA CON ULTRA TAMAÑO (48) ---
+    // --- TEXTOS DE RESERVA ---
     float inicioY = 75.f;    
     float espaciadoY = 52.f; 
 
-    // Lista Reservas Jugador 1
     int filaJ1 = 0;
     for (int i = 0; i < 3; i++) {
         if (i < indiceActivoJ1) continue; 
@@ -421,7 +516,6 @@ void CombateMusical::actualizar() {
     }
     for(int i = filaJ1; i < 3; i++) { txtReservaJ1[i].setString(""); }
 
-    // Lista Reservas Jugador 2 (Bot)
     int filaJ2 = 0;
     for (int i = 0; i < 3; i++) {
         if (i < indiceActivoJ2) continue; 
@@ -439,7 +533,8 @@ void CombateMusical::actualizar() {
     if (tiempoRestante > 0) {
         if (relojPelea.getElapsedTime().asSeconds() >= 1.f) { tiempoRestante--; relojPelea.restart(); }
     } else {
-        if (equipoJ1[indiceActivoJ1].getVida() >= equipoJ2[indiceActivoJ2].getVida()) avanzarSiguienteRonda(1); else avanzarSiguienteRonda(2);
+        if (equipoJ1[indiceActivoJ1].getVida() >= equipoJ2[indiceActivoJ2].getVida()) avanzarSiguienteRonda(1); 
+        else avanzarSiguienteRonda(2);
         return;
     }
     txtCronometro.setString(std::to_string(tiempoRestante));
@@ -448,27 +543,27 @@ void CombateMusical::actualizar() {
 
 void CombateMusical::dibujar(sf::RenderWindow& window) {
     if (estadoActual == EstadoJuego::SeleccionPersonajes) {
-        window.draw(spriteSeleccion);
+        // Solo dibujar el fondo de selección si la textura es válida
+        if (texturaSeleccion.getSize().x > 0) {
+            window.draw(spriteSeleccion);
+        }
 
-        // Renderizado del Temporizador central inferior (Posicionado sobre el HUD)
         txtTiempoSeleccion.setPosition(640.f - txtTiempoSeleccion.getLocalBounds().width / 2.f, 485.f);
         window.draw(txtTiempoSeleccion);
 
-        // Dibujar dinámicamente los nombres de la escuadra en los casilleros del marco inferior
         for (size_t i = 0; i < equipoJ1.size(); ++i) {
             sf::Text t(equipoJ1[i].getNombre(), fuenteUI, 22);
             t.setFillColor(sf::Color::White); 
-            t.setPosition(125.f + (i * 105.f), 645.f); // Ranuras J1 (Lado Izquierdo)
+            t.setPosition(125.f + (i * 105.f), 645.f); 
             window.draw(t);
         }
         for (size_t i = 0; i < equipoJ2.size(); ++i) {
             sf::Text t(equipoJ2[i].getNombre(), fuenteUI, 22);
             t.setFillColor(sf::Color::White); 
-            t.setPosition(685.f + (i * 105.f), 645.f); // Ranuras Bot (Lado Derecho)
+            t.setPosition(685.f + (i * 105.f), 645.f); 
             window.draw(t);
         }
 
-        // Renderizado del selector arcade dinámico (Matriz de 2 filas x 6 columnas)
         float startGridX = 405.f; float startGridY = 175.f;
         float slotW = 74.f;       float slotH = 115.f;
         float spacingX = 14.f;    float spacingY = 14.f;
@@ -482,7 +577,10 @@ void CombateMusical::dibujar(sf::RenderWindow& window) {
     }
 
     // --- RENDERIZADO DEL COMBATE RECEPTIVO ---
-    window.draw(spriteEscenario);
+    // Solo dibujar fondo si existe
+    if (texturaEscenario.getSize().x > 0) {
+        window.draw(spriteEscenario);
+    }
 
     if (indiceActivoJ1 < 3) equipoJ1[indiceActivoJ1].dibujar(window);
     if (indiceActivoJ2 < 3) equipoJ2[indiceActivoJ2].dibujar(window);
@@ -498,18 +596,24 @@ void CombateMusical::dibujar(sf::RenderWindow& window) {
 
     window.draw(txtNombreJ1); window.draw(txtNombreJ2);
     window.draw(marcoAvatarJ1); window.draw(marcoAvatarJ2);
-    if (indiceActivoJ1 < 3) window.draw(spriteAvatarJ1);
-    if (indiceActivoJ2 < 3) window.draw(spriteAvatarJ2);
+    // Quitamos o condicionamos el dibujo de los avatars
+    if (indiceActivoJ1 < 3 && texturaAvatarJ1.getSize().x > 0) window.draw(spriteAvatarJ1);
+    if (indiceActivoJ2 < 3 && texturaAvatarJ2.getSize().x > 0) window.draw(spriteAvatarJ2);
 
     window.draw(fondoEspecialJ1); window.draw(fondoEspecialJ2);
     window.draw(barraEspecialJ1); window.draw(barraEspecialJ2);
     window.draw(txtNivelJ1);      window.draw(txtNivelJ2);
 
+    // Dibujar combos si hay más de 1 golpe
+    if (hitsJ1 > 1) window.draw(txtComboJ1);
+    if (hitsJ2 > 1) window.draw(txtComboJ2);
+
     if (rondaTerminada) window.draw(txtAnuncioKO);
 }
 
-void CombateMusical::reiniciarRelojes(int medallas) {
+void CombateMusical::reiniciarRelojes() {
     relojPelea.restart();
+    relojDeltaTime.restart(); // Reiniciar delta time en combate
     tiempoRestante = 99;
     golpeImpactadoEsteTurno = false;
     botGolpeImpactadoEsteTurno = false;
@@ -523,10 +627,9 @@ void CombateMusical::reiniciarRelojes(int medallas) {
     botQuiereAgacharse = false;
     botQuiereDefenderse = false;
 
-    floatProximaDecision = 0.5f - (medallas * 0.08f);
-    if (floatProximaDecision < 0.04f) floatProximaDecision = 0.04f; 
+    // Inicia en modo fácil (0.5 segundos entre decisiones)
+    floatProximaDecision = 0.5f; 
 
-    // Inicialización definitiva basada en los personajes seleccionados de forma interactiva
     if (equipoJ1.size() >= 3) {
         equipoJ1[0].inicializar(equipoJ1[0].getNombre(), "assets/portraits/" + equipoJ1[0].getNombre() + ".png", sf::Color::Cyan, 300.f);
         equipoJ1[1].inicializar(equipoJ1[1].getNombre(), "assets/portraits/" + equipoJ1[1].getNombre() + ".png", sf::Color(30, 144, 255), 300.f);
@@ -547,8 +650,13 @@ void CombateMusical::avanzarSiguienteRonda(int ganadorDeRonda) {
 
     if (ganadorDeRonda == 1) {
         txtAnuncioKO.setString("K.O. - ROUND GANADO");
-        equipoJ1[indiceActivoJ1].curarVida(40.f); 
-        indiceActivoJ2++; 
+        equipoJ1[indiceActivoJ1].curarVida(40.f);
+        indiceActivoJ2++;
+        
+        // IA Progresiva: Cada vez que derrotas a alguien, el siguiente es más rápido
+        floatProximaDecision -= 0.15f;
+        if (floatProximaDecision < 0.08f) floatProximaDecision = 0.08f;
+
     } else {
         txtAnuncioKO.setString("K.O. - BOT GANADOR");
         equipoJ2[indiceActivoJ2].curarVida(40.f);
@@ -571,42 +679,97 @@ void CombateMusical::actualizarIABot() {
         botQuiereAgacharse = false;
         botQuiereDefenderse = false;
         equipoJ2[indiceActivoJ2].setAgachado(false);
-        if (x2 > x1) equipoJ2[indiceActivoJ2].caminar(-1.f); else equipoJ2[indiceActivoJ2].caminar(1.f);
+        // --- CORRECCIÓN DE MOVIMIENTO DEL BOT ---
+        // También enviamos dirección pura al bot, sin multiplicarlo por dtBot
+        if (x2 > x1) equipoJ2[indiceActivoJ2].caminar(-1.f); 
+        else equipoJ2[indiceActivoJ2].caminar(1.f);
     } else {
         if (relojDecisionBot.getElapsedTime().asSeconds() >= floatProximaDecision) {
             relojDecisionBot.restart();
             
-            int decision = std::rand() % 100;
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::uniform_int_distribution<> dist(0, 99);
+            int decision = dist(gen);
+
+            // La agresividad y precisión dependen de floatProximaDecision
+            // A menor valor (más difícil), el bot es más reactivo.
+            int umbralDificultad = static_cast<int>(floatProximaDecision * 100); 
             
-            if (jugadorAtacando && decision < 55) {
-                botQuiereDefenderse = true; 
+            // 1. Reacción defensiva: Si el jugador ataca y el bot es nivel alto, bloquea casi siempre
+            if (jugadorAtacando && decision > (umbralDificultad)) {
+                botQuiereDefenderse = true;
                 botQuiereAgacharse = false;
             }
-            else if (nivelesJ2 >= 1 && decision < 25) { 
-                nivelesJ2--;
-                equipoJ2[indiceActivoJ2].lanzarAtaque(5); 
-                botGolpeImpactadoEsteTurno = false;
-                botQuiereAgacharse = false;
-                botQuiereDefenderse = false;
-            } 
-            else if (decision < 70) {
-                equipoJ2[indiceActivoJ2].lanzarAtaque((std::rand() % 4) + 1);
-                botGolpeImpactadoEsteTurno = false;
-                botQuiereAgacharse = false;
-                botQuiereDefenderse = false;
-            } else {
-                botQuiereAgacharse = true;
-                botQuiereDefenderse = false;
+            else {
+                // 2. Uso de Super Ataque (Solo si tiene energía y el jugador está cerca)
+                if (nivelesJ2 >= 1 && decision < (40 - umbralDificultad)) { 
+                    nivelesJ2--;
+                    equipoJ2[indiceActivoJ2].lanzarAtaque(5); 
+                    botGolpeImpactadoEsteTurno = false;
+                    botQuiereAgacharse = false;
+                    botQuiereDefenderse = false;
+                } 
+                // 3. Ofensiva: Lanzar golpes o combos
+                else if (decision < 75) {
+                    std::uniform_int_distribution<> distAtq(1, 4);
+                    equipoJ2[indiceActivoJ2].lanzarAtaque(distAtq(gen));
+                    
+                    // Si es dificultad alta, intentar un segundo golpe (combo) inmediatamente
+                    if (floatProximaDecision < 0.2f) {
+                        equipoJ2[indiceActivoJ2].lanzarAtaque(distAtq(gen));
+                    }
+                    
+                    botGolpeImpactadoEsteTurno = false;
+                    botQuiereAgacharse = false;
+                    botQuiereDefenderse = false;
+                } else {
+                    botQuiereAgacharse = true;
+                    botQuiereDefenderse = false;
+                }
             }
         }
-
         if (botQuiereAgacharse) {
             equipoJ2[indiceActivoJ2].setAgachado(true);
         } else if (botQuiereDefenderse) {
             equipoJ2[indiceActivoJ2].setAgachado(false);
-            if (x2 > x1) equipoJ2[indiceActivoJ2].caminar(1.f); else equipoJ2[indiceActivoJ2].caminar(-1.f);
+            // --- CORRECCIÓN ---
+            if (x2 > x1) equipoJ2[indiceActivoJ2].caminar(1.f); 
+            else equipoJ2[indiceActivoJ2].caminar(-1.f);
         } else {
             equipoJ2[indiceActivoJ2].setAgachado(false);
         }
     }
+}
+
+void CombateMusical::acumularEnergiaJ1(float cantidad) {
+    energiaJ1 += cantidad;
+    if (energiaJ1 >= 100.f) {
+        energiaJ1 -= 100.f; 
+        if (nivelesJ1 < 5) {
+            nivelesJ1++;    
+        } else {
+            energiaJ1 = 100.f; 
+        }
+    }
+}
+
+void CombateMusical::acumularEnergiaJ2(float cantidad) {
+    energiaJ2 += cantidad;
+    if (energiaJ2 >= 100.f) {
+        energiaJ2 -= 100.f;
+        if (nivelesJ2 < 5) {
+            nivelesJ2++;
+        } else {
+            energiaJ2 = 100.f;
+        }
+    }
+}
+
+void CombateMusical::cargarAvatarsUI() {
+    if (equipoJ1.empty() || equipoJ2.empty()) return;
+    if (indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) return;
+
+    // Se ha desactivado la carga de portraits para evitar errores de archivos faltantes
+    // El juego funcionará solo con los círculos y marcos.
 }
