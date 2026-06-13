@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include <random> // Uso de random moderno en lugar de std::rand
+#include <cstdio> // Para poder usar snprintf en los decimales del tiempo
 
 CombateMusical::CombateMusical() {
     // Generación de números aleatorios moderna y segura
@@ -194,19 +195,19 @@ void CombateMusical::inicializarPantallaSeleccion() {
         spriteSeleccion.setScale(1280.f / texturaSeleccion.getSize().x, 720.f / texturaSeleccion.getSize().y);
     }
 
-    selectorCuadrula.setSize(sf::Vector2f(106.f, 161.f)); // Medidas ajustadas
+    selectorCuadrula.setSize(sf::Vector2f(122.f, 172.f)); // Medidas ajustadas
     selectorCuadrula.setFillColor(sf::Color(0, 255, 255, 70)); 
     selectorCuadrula.setOutlineColor(sf::Color::Cyan); 
     selectorCuadrula.setOutlineThickness(4.f);
 
     fondoOcultarTiempo.setSize(sf::Vector2f(120.f, 40.f));
     fondoOcultarTiempo.setFillColor(sf::Color(10, 15, 35)); 
-    fondoOcultarTiempo.setPosition(580.f, 505.f); 
+    fondoOcultarTiempo.setPosition(580.f, 520.f); // Bajamos un poco el fondo oscuro
 
     txtTiempoSeleccion.setFont(fuenteUI);
     txtTiempoSeleccion.setCharacterSize(42);
-    txtTiempoSeleccion.setFillColor(sf::Color(0, 255, 255)); 
-    txtTiempoSeleccion.setPosition(585.f, 500.f);
+    txtTiempoSeleccion.setFillColor(sf::Color::White); // Ahora es de color blanco
+    txtTiempoSeleccion.setPosition(585.f, 520.f); // Bajamos el texto del temporizador
 
     for(int i=0; i<3; i++) {
         vistasPreviasJ1[i].setSize(sf::Vector2f(75.f, 75.f));
@@ -309,38 +310,42 @@ void CombateMusical::actualizar() {
     float deltaTime = relojDeltaTime.restart().asSeconds();
 
     if (estadoActual == EstadoJuego::SeleccionPersonajes) {
-        float xInicial = 330.f; // Ajusta en base a la foto original
-        float yInicial = 150.f; 
-        float espacioX = 120.f; 
-        float espacioY = 177.f; 
+        // Ajustamos la posición inicial y los espacios para el nuevo tamaño del recuadro
+        float xInicial = 335.f; 
+        float yInicial = 145.f; 
+        float espacioX = 122.f; 
+        float espacioY = 178.f; 
         selectorCuadrula.setPosition(xInicial + colSeleccionada * espacioX, yInicial + filaSeleccionada * espacioY);
 
-        if (relojSeleccion.getElapsedTime().asSeconds() >= 1.f) {
+        // Lógica Continua del Temporizador (Resta con deltaTime para mostrar decimales fluidos)
+        if (turnoJugador1) {
             if (tiempoSeleccionRestante > 0.f) {
-                tiempoSeleccionRestante -= 1.f;
+                tiempoSeleccionRestante -= deltaTime; // Bajamos el tiempo progresivamente
+                if (tiempoSeleccionRestante < 0.f) tiempoSeleccionRestante = 0.f; // Evitar números negativos
             } else {
-                if (turnoJugador1) {
-                    std::random_device rd; std::mt19937 gen(rd()); std::uniform_int_distribution<> distAuto(0, 11);
-                    while(equipoJ1.size() < 3) {
-                        int id = distAuto(gen);
-                        bool existe = false;
-                        for (const auto& pj : equipoJ1) if (pj.getNombre() == roster[id].nombre) existe = true;
-                        if (!existe) {
-                            Personaje p;
-                            p.inicializar(roster[id].nombre, roster[id].rutaAvatar, roster[id].colorRelleno, 300.f);
-                            equipoJ1.push_back(p);
-                            vistasPreviasJ1[equipoJ1.size() - 1].setFillColor(roster[id].colorRelleno);
-                        }
+                // Se acabó el tiempo, autoselección
+                std::random_device rd; std::mt19937 gen(rd()); std::uniform_int_distribution<> distAuto(0, 11);
+                while(equipoJ1.size() < 3) {
+                    int id = distAuto(gen);
+                    bool existe = false;
+                    for (const auto& pj : equipoJ1) if (pj.getNombre() == roster[id].nombre) existe = true;
+                    if (!existe) {
+                        Personaje p;
+                        p.inicializar(roster[id].nombre, roster[id].rutaAvatar, roster[id].colorRelleno, 300.f);
+                        equipoJ1.push_back(p);
+                        vistasPreviasJ1[equipoJ1.size() - 1].setFillColor(roster[id].colorRelleno);
                     }
-                    turnoJugador1 = false;
-                    tiempoSeleccionRestante = 15.f;
                 }
+                turnoJugador1 = false;
+                tiempoSeleccionRestante = 15.f; 
+                relojSeleccion.restart(); // Se reinicia para que el bot empiece su cadencia correcta
             }
-            relojSeleccion.restart();
         }
 
-        std::string extraCeros = (tiempoSeleccionRestante < 10) ? "0" : "";
-        txtTiempoSeleccion.setString(extraCeros + std::to_string(static_cast<int>(tiempoSeleccionRestante)) + ".00");
+        // Formatear el texto para que muestre los 2 decimales (ej. 14.53, 09.10)
+        char buffer[16];
+        snprintf(buffer, sizeof(buffer), "%05.2f", tiempoSeleccionRestante); 
+        txtTiempoSeleccion.setString(buffer);
 
         // Lógica del Bot (elige un personaje cada 0.8s)
         if (!turnoJugador1 && relojSeleccion.getElapsedTime().asSeconds() > 0.8f) {
