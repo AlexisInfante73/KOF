@@ -1,11 +1,10 @@
 #include "combatemusical.h"
 #include <iostream>
 #include <cmath>
-#include <random> // Uso de random moderno en lugar de std::rand
-#include <cstdio> // Para poder usar snprintf en los decimales del tiempo
+#include <random> 
+#include <cstdio> // NECESARIO PARA snprintf Y LOS DECIMALES
 
 CombateMusical::CombateMusical() {
-    // Generación de números aleatorios moderna y segura
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distEscenario(1, 4);
@@ -195,19 +194,22 @@ void CombateMusical::inicializarPantallaSeleccion() {
         spriteSeleccion.setScale(1280.f / texturaSeleccion.getSize().x, 720.f / texturaSeleccion.getSize().y);
     }
 
-    selectorCuadrula.setSize(sf::Vector2f(122.f, 172.f)); // Medidas ajustadas
+    // Ajustado el tamaño a la imagen (más ancho y alto)
+    selectorCuadrula.setSize(sf::Vector2f(122.f, 172.f)); 
     selectorCuadrula.setFillColor(sf::Color(0, 255, 255, 70)); 
     selectorCuadrula.setOutlineColor(sf::Color::Cyan); 
     selectorCuadrula.setOutlineThickness(4.f);
 
+    // Ajustado fondo para ocultar tiempo (más abajo)
     fondoOcultarTiempo.setSize(sf::Vector2f(120.f, 40.f));
     fondoOcultarTiempo.setFillColor(sf::Color(10, 15, 35)); 
-    fondoOcultarTiempo.setPosition(580.f, 520.f); // Bajamos un poco el fondo oscuro
+    fondoOcultarTiempo.setPosition(580.f, 520.f); 
 
+    // Ajustado el texto del tiempo (Blanco y más abajo)
     txtTiempoSeleccion.setFont(fuenteUI);
     txtTiempoSeleccion.setCharacterSize(42);
-    txtTiempoSeleccion.setFillColor(sf::Color::White); // Ahora es de color blanco
-    txtTiempoSeleccion.setPosition(585.f, 520.f); // Bajamos el texto del temporizador
+    txtTiempoSeleccion.setFillColor(sf::Color::White); 
+    txtTiempoSeleccion.setPosition(585.f, 520.f); 
 
     for(int i=0; i<3; i++) {
         vistasPreviasJ1[i].setSize(sf::Vector2f(75.f, 75.f));
@@ -229,6 +231,7 @@ void CombateMusical::inicializarPantallaSeleccion() {
     equipoJ1.clear();
     equipoJ2.clear();
     relojSeleccion.restart();
+    relojDeltaTime.restart(); // Iniciar reloj para los decimales
 }
 
 void CombateMusical::seleccionarPersonajeActual() {
@@ -307,23 +310,22 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
 }
 
 void CombateMusical::actualizar() {
-    float deltaTime = relojDeltaTime.restart().asSeconds();
+    float deltaTime = relojDeltaTime.restart().asSeconds(); // Obtiene tiempo entre frames
 
     if (estadoActual == EstadoJuego::SeleccionPersonajes) {
-        // Ajustamos la posición inicial y los espacios para el nuevo tamaño del recuadro
+        // Coordenadas actualizadas para que encaje el nuevo tamaño
         float xInicial = 335.f; 
         float yInicial = 145.f; 
         float espacioX = 122.f; 
         float espacioY = 178.f; 
         selectorCuadrula.setPosition(xInicial + colSeleccionada * espacioX, yInicial + filaSeleccionada * espacioY);
 
-        // Lógica Continua del Temporizador (Resta con deltaTime para mostrar decimales fluidos)
+        // --- Lógica del Tiempo con DECIMALES ---
         if (turnoJugador1) {
             if (tiempoSeleccionRestante > 0.f) {
-                tiempoSeleccionRestante -= deltaTime; // Bajamos el tiempo progresivamente
-                if (tiempoSeleccionRestante < 0.f) tiempoSeleccionRestante = 0.f; // Evitar números negativos
+                tiempoSeleccionRestante -= deltaTime;
+                if (tiempoSeleccionRestante < 0.f) tiempoSeleccionRestante = 0.f;
             } else {
-                // Se acabó el tiempo, autoselección
                 std::random_device rd; std::mt19937 gen(rd()); std::uniform_int_distribution<> distAuto(0, 11);
                 while(equipoJ1.size() < 3) {
                     int id = distAuto(gen);
@@ -337,12 +339,12 @@ void CombateMusical::actualizar() {
                     }
                 }
                 turnoJugador1 = false;
-                tiempoSeleccionRestante = 15.f; 
-                relojSeleccion.restart(); // Se reinicia para que el bot empiece su cadencia correcta
+                tiempoSeleccionRestante = 15.f;
+                relojSeleccion.restart();
             }
         }
 
-        // Formatear el texto para que muestre los 2 decimales (ej. 14.53, 09.10)
+        // --- Actualizar Texto con snprintf para 2 decimales ---
         char buffer[16];
         snprintf(buffer, sizeof(buffer), "%05.2f", tiempoSeleccionRestante); 
         txtTiempoSeleccion.setString(buffer);
@@ -431,7 +433,6 @@ void CombateMusical::actualizar() {
                 equipoJ2[indiceActivoJ2].recibirDanio(dmg);
                 acumularEnergiaJ2(6.f); 
                 
-                // Lógica de hits J1
                 hitsJ1++;
                 relojComboJ1.restart();
                 txtComboJ1.setString(std::to_string(hitsJ1) + " HITS!");
@@ -467,7 +468,6 @@ void CombateMusical::actualizar() {
                 equipoJ1[indiceActivoJ1].recibirDanio(dmg);
                 acumularEnergiaJ1(6.f); 
                 
-                // Lógica de hits J2
                 hitsJ2++;
                 relojComboJ2.restart();
                 txtComboJ2.setString(std::to_string(hitsJ2) + " HITS!");
@@ -479,7 +479,6 @@ void CombateMusical::actualizar() {
         }
     }
 
-    // Temporizadores de combo
     if (hitsJ1 > 0 && relojComboJ1.getElapsedTime().asSeconds() > 1.5f) hitsJ1 = 0;
     if (hitsJ2 > 0 && relojComboJ2.getElapsedTime().asSeconds() > 1.5f) hitsJ2 = 0;
 
