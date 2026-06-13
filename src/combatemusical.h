@@ -6,11 +6,16 @@
 #include <string>
 #include "personaje.h" // Asegúrate de tener este archivo en tu proyecto
 
+// --- ESTRUCTURA PARA EL MENÚ (NUEVO) ---
+struct DatosPersonaje {
+    std::string nombre;
+    std::string rutaAvatar;
+    sf::Color colorRelleno;
+};
+
 enum class EstadoJuego {
     SeleccionPersonajes,
     Combate
-    // (Nota: si añadiste medallasElegidas u otras pantallas en el .cpp, 
-    // asegúrate de que el estado corresponda a tu lógica).
 };
 
 class CombateMusical {
@@ -29,6 +34,13 @@ private:
     float tiempoSeleccionRestante;
     sf::Text txtTiempoSeleccion;
     sf::Clock relojSeleccion;
+    
+    // Elementos visuales y de control del menú
+    DatosPersonaje roster[12];
+    bool turnoJugador1;
+    sf::RectangleShape fondoOcultarTiempo; 
+    sf::RectangleShape vistasPreviasJ1[3];
+    sf::RectangleShape vistasPreviasJ2[3];
 
     // --- HUD Combate ---
     sf::Text txtCronometro;
@@ -87,7 +99,7 @@ private:
     sf::Clock relojDecisionBot;
     sf::Clock relojComboJ1;
     sf::Clock relojComboJ2;
-    sf::Clock relojDeltaTime; // Nuevo reloj para control de FPS
+    sf::Clock relojDeltaTime; // Reloj para control de FPS
 
     // --- IA Bot ---
     float floatProximaDecision;
@@ -95,6 +107,8 @@ private:
     bool botQuiereDefenderse;
 
     // --- Métodos Internos ---
+    void cargarRoster();
+    void seleccionarPersonajeActual();
     void inicializarPantallaSeleccion();
     void avanzarSiguienteRonda(int ganadorDeRonda);
     void actualizarIABot();
@@ -104,11 +118,7 @@ private:
 
 public:
     CombateMusical();
-    
-    // --- SOLUCIÓN DEL ERROR DE COMPILACIÓN ---
-    // Esta función ahora es pública para que main() pueda acceder a ella.
-    void reiniciarRelojes();
-    
+    void reiniciarRelojes(); 
     void procesarEntrada(sf::Event& evento);
     void actualizar();
     void dibujar(sf::RenderWindow& window);
