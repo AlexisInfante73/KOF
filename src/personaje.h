@@ -49,6 +49,7 @@ private:
     sf::Clock   relojRodada;
     sf::Clock   relojAtaque;
     sf::Clock   relojAturdimiento; 
+    sf::Clock   relojCooldownAtaque; // Control global para evitar spam
 
 public:
     Personaje();

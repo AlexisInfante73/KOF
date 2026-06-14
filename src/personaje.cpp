@@ -11,6 +11,7 @@ const float FUERZA_SALTO = -16.f;
 const float GRAVEDAD = 0.8f;
 const float DURACION_RODADA = 0.4f;
 const float DURACION_ATAQUE = 0.3f;
+const float COOLDOWN_ATAQUE_POST = 0.2f; // Tiempo de espera extra tras un ataque
 
 Personaje::Personaje() {
     radioOriginal = 40.f; // Tamaño de tu bolita
@@ -179,12 +180,21 @@ void Personaje::lanzarAtaque(int tipo) {
         }
     }
 
-    if ((!estaAtacando || puedeHacerCombo) && !estaRodando && !estaAturdido && enElSuelo) { 
+    // Lógica Anti-Spam: 
+    // Si no es un combo, verificamos que haya pasado la duración del ataque + el delay de recuperación
+    if (!puedeHacerCombo && relojCooldownAtaque.getElapsedTime().asSeconds() < (DURACION_ATAQUE + COOLDOWN_ATAQUE_POST)) {
+        return;
+    }
+
+    if ((!estaAtacando || puedeHacerCombo) && !estaRodando && !estaAturdido && enElSuelo) {
         estaAtacando = true;
         tipoAtaque = tipo;
         comboStep = puedeHacerCombo ? comboStep + 1 : 1;
         relojAtaque.restart();
         velocidad.x = 0.f; 
+
+        // Reiniciamos el cooldown global cada vez que se inicia un ataque (o parte de un combo)
+        relojCooldownAtaque.restart();
 
         // Tinte de colores para indicar ataques
         if (tipo == 1) cuerpoShape.setFillColor(sf::Color::White); 

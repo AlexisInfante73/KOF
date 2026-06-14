@@ -275,24 +275,22 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
     if (evento.type == sf::Event::KeyPressed) {
         if (evento.key.code == sf::Keyboard::Space) equipoJ1[indiceActivoJ1].saltar();
         
-        // --- MECÁNICA ANTI-SPAM DE BOTONES ---
-        // Exigimos que no esté atacando, que no esté aturdido y que hayan pasado al menos 0.15s desde el último golpe
-        bool puedeAtacar = !equipoJ1[indiceActivoJ1].getEstaAtacando() && 
-                           !equipoJ1[indiceActivoJ1].getEstaAturdido() && 
-                           relojCooldownJ1.getElapsedTime().asSeconds() > 0.15f;
+        // Ahora la validación de spam y estado de ataque se maneja internamente en Personaje::lanzarAtaque
+        bool puedeIntentarAtaque = !equipoJ1[indiceActivoJ1].getEstaAturdido();
 
-        if (puedeAtacar) {
-            if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; relojCooldownJ1.restart(); }
-            if (evento.key.code == sf::Keyboard::J) { equipoJ1[indiceActivoJ1].lanzarAtaque(2); golpeImpactadoEsteTurno = false; relojCooldownJ1.restart(); }
-            if (evento.key.code == sf::Keyboard::K) { equipoJ1[indiceActivoJ1].lanzarAtaque(3); golpeImpactadoEsteTurno = false; relojCooldownJ1.restart(); }
-            if (evento.key.code == sf::Keyboard::L) { equipoJ1[indiceActivoJ1].lanzarAtaque(4); golpeImpactadoEsteTurno = false; relojCooldownJ1.restart(); }
+        if (puedeIntentarAtaque) {
+            if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; }
+            if (evento.key.code == sf::Keyboard::J) { equipoJ1[indiceActivoJ1].lanzarAtaque(2); golpeImpactadoEsteTurno = false; }
+            if (evento.key.code == sf::Keyboard::K) { equipoJ1[indiceActivoJ1].lanzarAtaque(3); golpeImpactadoEsteTurno = false; }
+            if (evento.key.code == sf::Keyboard::L) { equipoJ1[indiceActivoJ1].lanzarAtaque(4); golpeImpactadoEsteTurno = false; }
             
             if (evento.key.code == sf::Keyboard::E) {
                 if (nivelesJ1 >= 1) {
-                    nivelesJ1--; 
-                    equipoJ1[indiceActivoJ1].lanzarAtaque(5); 
+                    // El especial también consume energía solo si el ataque se lanza realmente
+                    // Para mayor precisión, podrías hacer que lanzarAtaque devuelva un bool
+                    nivelesJ1--;
+                    equipoJ1[indiceActivoJ1].lanzarAtaque(5);
                     golpeImpactadoEsteTurno = false;
-                    relojCooldownJ1.restart();
                 }
             }
         }
