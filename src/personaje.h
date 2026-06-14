@@ -3,10 +3,9 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <map>
 
 // --- CONSTANTES DEL JUEGO ---
-// Nota: Se mantienen como macros (#define) para compatibilidad con tus otros archivos, 
-// aunque en C++ moderno se recomienda el uso de 'constexpr'.
 #ifndef ALTURA_SUELO
 #define ALTURA_SUELO 500.f
 #endif
@@ -44,7 +43,7 @@ private:
     bool        esSuperAtaque;
     int         tipoAtaque;
     float       vida;
-    int         comboStep; // Nuevo: rastrea el paso actual del combo
+    int         comboStep; 
     std::string nombre;
     std::string rutaAvatar;
     
@@ -67,13 +66,28 @@ private:
     float       tiempoLimiteDobleToque;
     bool        estaCorriendo;
 
+    // --- ANIMACIÓN DE SPRITES (MIGRADO A HOJAS INDEPENDIENTES) ---
+    int         anchoFrame;
+    int         altoFrame;
+    int         frameActualCol;
+    int         maxFramesAccion; // Cuántos frames reales tiene la tira actual
+    sf::Clock   relojAnimacion;
+    
+    // Almacenamiento dinámico de las hojas de textura extraídas de tu carpeta
+    std::map<std::string, sf::Texture> mapaTexturas;
+    std::string accionActual; // Guarda qué animación está corriendo ("caminar", "agacharse", etc.)
+
     // --- COMPONENTES GRÁFICOS Y RELOJES ---
     sf::CircleShape cuerpoShape;
-    sf::Color       colorBase;
-    sf::Clock       relojDobleToque;
-    sf::Clock       relojRodada;
-    sf::Clock       relojAtaque;
-    sf::Clock       relojAturdimiento; 
+    sf::Sprite       spriteCombate;  
+    sf::Color        colorBase;
+    sf::Clock        relojDobleToque;
+    sf::Clock        relojRodada;
+    sf::Clock        relojAtaque;
+    sf::Clock        relojAturdimiento; 
+
+    // Métodos internos de control de texturas
+    void inyectarTextura(const std::string& claveAccion);
 
 public:
     Personaje();
@@ -96,9 +110,9 @@ public:
     void aplicarAturdimiento(float duracion); 
     void serLanzado(float fuerzaX, float fuerzaY); 
 
-    // --- GETTERS TERRESTRES Y GENERALES ---
+    // --- GETTERS ---
     float       getPosicionX() const;
-    float       getPosicionY() const; // NUEVO: Útil para calcular colisiones aéreas
+    float       getPosicionY() const; 
     bool        getEstaAgachado() const;
     bool        getEstaAtacando() const;
     bool        getEsSuperAtaque() const;
@@ -110,7 +124,6 @@ public:
     std::string getNombre() const;
     std::string getRutaAvatar() const;
     
-    // --- GETTERS AÉREOS ---
     bool        getEstaEnElAire() const;
     bool        getEstaAtacandoAire() const;
     int         getTipoAtaqueAire() const;

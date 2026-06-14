@@ -118,7 +118,7 @@ private:
 
 public:
     CombateMusical();
-    void reiniciarRelojes(); 
+    void reiniciarRelojes(int medallas); 
     void procesarEntrada(sf::Event& evento);
     void actualizar();
     void dibujar(sf::RenderWindow& window);

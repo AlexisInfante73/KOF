@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 
-// Usar un enum hace que el código sea infinitamente más legible que usar números sueltos (0, 1, 2, 3...)
 enum class EstadoApp {
     MenuPrincipal,
     RegistroCombatientes,
@@ -31,7 +30,7 @@ int main() {
         }
     }
 
-    // --- CARGAR FONDO DE MENÚS (Juego1.png) ---
+    // --- CARGAR FONDO DE MENÚS ---
     sf::Texture texturaJuego;
     sf::Sprite spriteFondo;
     bool tieneFondo = false;
@@ -40,7 +39,6 @@ int main() {
         texturaJuego.loadFromFile("../assets/images/Juego1.png")) {
         tieneFondo = true;
         spriteFondo.setTexture(texturaJuego);
-        // Protección contra división por cero si la imagen está corrupta o vacía
         if (texturaJuego.getSize().x > 0 && texturaJuego.getSize().y > 0) {
             spriteFondo.setScale(1280.f / texturaJuego.getSize().x, 720.f / texturaJuego.getSize().y);
         }
@@ -99,15 +97,11 @@ int main() {
                 window.close();
             }
             
-            // Redirigir eventos de combate
             if (estadoActual == EstadoApp::SeleccionPersonaje || estadoActual == EstadoApp::Combate) {
                 combate.procesarEntrada(evento);
             }
             
-            // --- MANEJO DE ENTRADA POR EVENTOS (Mejor que isKeyPressed para Menús) ---
             if (evento.type == sf::Event::KeyPressed) {
-                
-                // Botón Escape para volver al menú
                 if (evento.key.code == sf::Keyboard::Escape) {
                     if (estadoActual == EstadoApp::ComoJugar || 
                         estadoActual == EstadoApp::Configuracion ||
@@ -117,7 +111,6 @@ int main() {
                     }
                 }
 
-                // Navegación de menús: Arriba / Abajo
                 if (evento.key.code == sf::Keyboard::Up) {
                     if (estadoActual == EstadoApp::MenuPrincipal) {
                         opcionMenuSeleccionada = (opcionMenuSeleccionada - 1 + 3) % 3;
@@ -129,7 +122,6 @@ int main() {
                     }
                 }
 
-                // Tecla Enter para confirmar
                 if (evento.key.code == sf::Keyboard::Enter) {
                     switch (estadoActual) {
                         case EstadoApp::MenuPrincipal:
@@ -165,7 +157,6 @@ int main() {
             txtOpcionComoJugar.setString(opcionMenuSeleccionada == 1 ? "> Como Jugar <" : "Como Jugar");
             txtOpcionConfig.setString(opcionMenuSeleccionada == 2 ? "> Configuracion <" : "Configuracion");
 
-            // Centrado seguro: si no hay fuente, getLocalBounds().width será 0 y no habrá error
             float centroX = 1280.f / 2.f;
             txtOpcionAventura.setPosition(centroX - txtOpcionAventura.getLocalBounds().width / 2.f, 490.f);
             txtOpcionComoJugar.setPosition(centroX - txtOpcionComoJugar.getLocalBounds().width / 2.f, 545.f);
@@ -178,7 +169,6 @@ int main() {
             window.draw(txtMenuInstrucciones);
         }
         else if (estadoActual == EstadoApp::RegistroCombatientes) {
-                 
             window.setView(window.getDefaultView());
             if (tieneFondo) { 
                 spriteFondo.setColor(sf::Color(80, 80, 80, 255)); 
