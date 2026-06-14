@@ -4,9 +4,8 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
-#include "personaje.h" // Asegúrate de tener este archivo en tu proyecto
+#include "personaje.h" 
 
-// --- ESTRUCTURA PARA EL MENÚ (NUEVO) ---
 struct DatosPersonaje {
     std::string nombre;
     std::string rutaAvatar;
@@ -35,7 +34,6 @@ private:
     sf::Text txtTiempoSeleccion;
     sf::Clock relojSeleccion;
     
-    // Elementos visuales y de control del menú
     DatosPersonaje roster[12];
     bool turnoJugador1;
     sf::RectangleShape fondoOcultarTiempo; 
@@ -93,19 +91,22 @@ private:
     bool botGolpeImpactadoEsteTurno;
     bool rondaTerminada;
     
+    // --- NUEVO: Progresión y Anti-Spam ---
+    int rachaVictorias;           // Controla la dificultad de la IA
+    sf::Clock relojCooldownJ1;    // Evita el spam de botones del jugador
+    
     // --- Relojes y Tiempos ---
     sf::Clock relojPelea;
     sf::Clock relojEsperaRonda;
     sf::Clock relojDecisionBot;
     sf::Clock relojComboJ1;
     sf::Clock relojComboJ2;
-    sf::Clock relojDeltaTime; // Reloj para control de FPS
+    sf::Clock relojDeltaTime; 
 
     // --- IA Bot ---
     float floatProximaDecision;
     bool botQuiereAgacharse;
     bool botQuiereDefenderse;
-    int nivelActual;
 
     // --- Métodos Internos ---
     void cargarRoster();
@@ -115,12 +116,11 @@ private:
     void actualizarIABot();
     void acumularEnergiaJ1(float cantidad);
     void acumularEnergiaJ2(float cantidad);
-    void generarNuevoEquipoBot();
     void cargarAvatarsUI();
 
 public:
     CombateMusical();
-    void reiniciarRelojes(int medallas); 
+    void reiniciarRelojes(); 
     void procesarEntrada(sf::Event& evento);
     void actualizar();
     void dibujar(sf::RenderWindow& window);
