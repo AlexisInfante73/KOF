@@ -199,6 +199,12 @@ void Personaje::lanzarAtaque(int tipo) {
     }
 }
 
+bool Personaje::puedeHacerCombo() const {
+    if (!estaAtacando) return false;
+    float tiempoTranscurrido = relojAtaque.getElapsedTime().asSeconds();
+    return (tiempoTranscurrido > DURACION_ATAQUE * 0.6f && comboStep < 3);
+}
+
 void Personaje::lanzarAtaqueAereo(int tipo) {
     if (!estaAtacandoAire && !estaAturdido && !enElSuelo) {
         estaAtacandoAire = true;

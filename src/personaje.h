@@ -64,6 +64,7 @@ public:
     void lanzarAtaque(int tipo);
     void lanzarAtaqueAereo(int tipo);
     void actualizar();
+    bool puedeHacerCombo() const;
     void dibujar(sf::RenderWindow& window);
     void corregirPosicionX(float deltaX);
     
