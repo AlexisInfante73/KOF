@@ -105,6 +105,7 @@ private:
     float floatProximaDecision;
     bool botQuiereAgacharse;
     bool botQuiereDefenderse;
+    int nivelActual;
 
     // --- Métodos Internos ---
     void cargarRoster();
@@ -114,6 +115,7 @@ private:
     void actualizarIABot();
     void acumularEnergiaJ1(float cantidad);
     void acumularEnergiaJ2(float cantidad);
+    void generarNuevoEquipoBot();
     void cargarAvatarsUI();
 
 public:

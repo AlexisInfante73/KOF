@@ -1,9 +1,19 @@
-#include "Personaje.h"
+#include "personaje.h"
 #include <cmath>
 #include <iostream>
 
+// --- CONSTANTES DEL JUEGO (Movidas aquí para evitar errores de macros) ---
+const float ALTURA_SUELO = 520.f;
+const float VEL_CAMINAR = 4.f;
+const float VEL_SPRINT = 7.f;
+const float VEL_RODADA = 9.f;
+const float FUERZA_SALTO = -16.f;
+const float GRAVEDAD = 0.8f;
+const float DURACION_RODADA = 0.4f;
+const float DURACION_ATAQUE = 0.3f;
+
 Personaje::Personaje() {
-    radioOriginal = 40.f;
+    radioOriginal = 40.f; // Tamaño de tu bolita
     enElSuelo = true;
     estaAgachado = false;
     estaAtacando = false;
@@ -16,7 +26,7 @@ Personaje::Personaje() {
     vida = 250.f; 
     comboStep = 0;
     nombre = "Anonimo";
-    rutaAvatar = "";
+    rutaAvatar = ""; // Inicializada por seguridad
     posicion = sf::Vector2f(0.f, 0.f);
     velocidad = sf::Vector2f(0.f, 0.f);
     
@@ -28,70 +38,33 @@ Personaje::Personaje() {
     presionoDerechaAntes = false;
     tiempoLimiteDobleToque = 0.25f; 
     estaCorriendo = false;
-    
-    anchoFrame = 150; 
-    altoFrame = 200;  
-    frameActualCol = 0;
-    maxFramesAccion = 7;
-    accionActual = "caminar";
-
-    cuerpoShape.setRadius(radioOriginal);
-    cuerpoShape.setOrigin(radioOriginal, radioOriginal * 2.f); 
 }
 
+// Inicializador adaptado
 void Personaje::inicializar(std::string nombrePeleador, std::string rutaImg, sf::Color color, float xInicial) {
     nombre = nombrePeleador;
-    rutaAvatar = rutaImg;
+    rutaAvatar = rutaImg; // <-- Guardamos la ruta
     colorBase = color;
-    cuerpoShape.setFillColor(colorBase);
-    frameActualCol = 0;
-
-    // --- DETECTOR DINÁMICO DE CARPETAS ---
-    std::string nombreLower = nombrePeleador;
-    for (auto& c : nombreLower) c = std::tolower(c);
-    std::string carpetaBase = "assets/portraits/" + nombreLower + "/";
-
-    // Mapeo con los archivos de Kai (Asegúrate de que los nombres coincidan exactamente con tus archivos)
-    std::map<std::string, std::string> archivosMapeados = {
-        { "caminar",   "kai_caminar.jpg" }, // Cambiado a .jpg basándome en tus capturas
-        { "agacharse", "Kai_agacharse.jpg" }, 
-        { "carga",     "kai_carga.jpg" },
-        { "arrojado",  "kai_arrojado.jpg" },
-        { "derrota",   "kai_derrota.jpg" }
-    };
-
-    // Cargamos las imágenes y BORRAMOS EL GRIS
-    for (auto const& [accion, archivo] : archivosMapeados) {
-        sf::Image img;
-        std::string rutaFinal = carpetaBase + archivo;
-        
-        // Intenta cargar con .jpg o .png por si cambiaste la extensión
-        if (img.loadFromFile(rutaFinal) || img.loadFromFile("../" + rutaFinal) || 
-            img.loadFromFile(carpetaBase + accion + ".png")) {
-            
-            // Borra el fondo gris. 
-            // NOTA: Si sigue viéndose gris, es porque el tono de tu imagen no es exactamente 128,128,128.
-            img.createMaskFromColor(sf::Color(128, 128, 128)); 
-            // img.createMaskFromColor(sf::Color(115, 115, 115)); // Descomenta esta línea y borra la de arriba si el gris no desaparece
-            
-            sf::Texture tex;
-            tex.loadFromImage(img);
-            mapaTexturas[accion] = tex;
-        } else {
-            std::cout << "[ERROR GRAVE]: No se pudo cargar la hoja: " << rutaFinal << std::endl;
-        }
-    }
-
-    accionActual = "caminar";
-    if (!mapaTexturas.empty() && mapaTexturas.find("caminar") != mapaTexturas.end()) {
-        inyectarTextura("caminar");
-        spriteCombate.setScale(2.2f, 2.2f); // Escalado ideal de combate
-    }
     
+    // Configuración de la forma geométrica
+    cuerpoShape.setRadius(radioOriginal);
+    cuerpoShape.setOrigin(radioOriginal, radioOriginal); // Centrar el origen
+    cuerpoShape.setFillColor(colorBase);
+    cuerpoShape.setOutlineThickness(3.f); // Contorno para que resalte
+    cuerpoShape.setOutlineColor(sf::Color::White);
+    cuerpoShape.setScale(1.f, 1.f); 
+    
+    // Configuración de la sombra
+    sombraShape.setRadius(radioOriginal);
+    sombraShape.setOrigin(radioOriginal, radioOriginal);
+    sombraShape.setFillColor(sf::Color(0, 0, 0, 100)); // Negro semitransparente
+    sombraShape.setScale(1.0f, 0.3f); // Inicialmente un óvalo plano
+
     posicion = sf::Vector2f(xInicial, ALTURA_SUELO);
     velocidad = sf::Vector2f(0.f, 0.f);
     vida = 250.f; 
     comboStep = 0;
+    
     estaAtacando = false;
     esSuperAtaque = false;
     estaAgachado = false;
@@ -104,48 +77,7 @@ void Personaje::inicializar(std::string nombrePeleador, std::string rutaImg, sf:
     presionoIzquierdaAntes = false;
     presionoDerechaAntes = false;
 
-    cuerpoShape.setRadius(radioOriginal);
-    cuerpoShape.setOrigin(radioOriginal, radioOriginal * 2.f);
     cuerpoShape.setPosition(posicion);
-}
-
-void Personaje::inyectarTextura(const std::string& claveAccion) {
-    if (accionActual == claveAccion) return; // Evitamos recargas innecesarias
-    
-    accionActual = claveAccion;
-    frameActualCol = 0; // Reiniciamos contador de animación
-    
-    if (mapaTexturas.find(claveAccion) != mapaTexturas.end()) {
-        spriteCombate.setTexture(mapaTexturas[claveAccion]);
-        
-        // --- CÁLCULO MATEMÁTICO AUTOMÁTICO DE TAMAÑOS ---
-        sf::Vector2u tamanoTextura = mapaTexturas[claveAccion].getSize();
-        
-        if (claveAccion == "caminar") {
-            maxFramesAccion = 7; 
-            altoFrame = tamanoTextura.y; 
-            anchoFrame = tamanoTextura.x / 7; 
-        } else if (claveAccion == "agacharse") {
-            maxFramesAccion = 4; 
-            altoFrame = tamanoTextura.y; 
-            anchoFrame = tamanoTextura.x / 4;
-        } else if (claveAccion == "carga") {
-            maxFramesAccion = 5; 
-            altoFrame = tamanoTextura.y; 
-            anchoFrame = tamanoTextura.x / 5;
-        } else if (claveAccion == "derrota") {
-            maxFramesAccion = 5; 
-            altoFrame = tamanoTextura.y; 
-            anchoFrame = tamanoTextura.x / 5;
-        } else if (claveAccion == "arrojado") {
-            // ¡CASO ESPECIAL! Esta imagen tiene 2 filas y 6 columnas
-            maxFramesAccion = 12; 
-            altoFrame = tamanoTextura.y / 2; 
-            anchoFrame = tamanoTextura.x / 6;
-        }
-
-        spriteCombate.setOrigin(anchoFrame / 2.f, (float)altoFrame);
-    }
 }
 
 void Personaje::verificarDobleToque(sf::Event& evento, float xRival) {
@@ -193,14 +125,22 @@ void Personaje::caminar(float direccion, bool correr) {
         relojRodada.restart();
         estaAgachado = false; 
         
-        cuerpoShape.setRadius(radioOriginal / 2.f);
-        cuerpoShape.setOrigin(radioOriginal / 2.f, radioOriginal);
+        // Efecto visual de rodar (la bolita se hace más pequeña)
+        cuerpoShape.setScale(0.7f, 0.7f);
         return;
     }
 
     if (!estaAgachado && !estaAtacando) { 
         float velActual = (estaCorriendo || correr) ? VEL_SPRINT : VEL_CAMINAR;
         velocidad.x = direccion * velActual;
+        
+        // Voltear la figura según la dirección
+        if (direccion > 0) {
+            cuerpoShape.setScale(std::abs(cuerpoShape.getScale().x), cuerpoShape.getScale().y);
+        } else if (direccion < 0) {
+            cuerpoShape.setScale(-std::abs(cuerpoShape.getScale().x), cuerpoShape.getScale().y);
+        }
+
     } else {
         velocidad.x = 0.f;
     }
@@ -222,11 +162,11 @@ void Personaje::setAgachado(bool agachado) {
     estaAgachado = agachado;
     if (estaAgachado) {
         estaCorriendo = false; 
-        cuerpoShape.setRadius(radioOriginal / 2.f);
-        cuerpoShape.setOrigin(radioOriginal / 2.f, radioOriginal);
+        // Efecto visual: bolita pequeña
+        cuerpoShape.setScale(0.7f, 0.7f);
     } else {
-        cuerpoShape.setRadius(radioOriginal);
-        cuerpoShape.setOrigin(radioOriginal, radioOriginal * 2.f);
+        // Vuelve a la normalidad (círculo)
+        cuerpoShape.setScale(1.f, 1.f);
     }
 }
 
@@ -246,14 +186,15 @@ void Personaje::lanzarAtaque(int tipo) {
         relojAtaque.restart();
         velocidad.x = 0.f; 
 
-        if (tipo == 1) cuerpoShape.setFillColor(sf::Color(255, 255, 150)); 
+        // Tinte de colores para indicar ataques
+        if (tipo == 1) cuerpoShape.setFillColor(sf::Color::White); 
         if (tipo == 2) cuerpoShape.setFillColor(sf::Color::Yellow);        
-        if (tipo == 3) cuerpoShape.setFillColor(sf::Color(255, 150, 255)); 
+        if (tipo == 3) cuerpoShape.setFillColor(sf::Color::Cyan); 
         if (tipo == 4) cuerpoShape.setFillColor(sf::Color::Magenta);        
-        
         if (tipo == 5) {
             esSuperAtaque = true;
             cuerpoShape.setFillColor(sf::Color::White);
+            cuerpoShape.setScale(1.3f, 1.3f); // Se hace más grande
         }
     }
 }
@@ -264,8 +205,7 @@ void Personaje::lanzarAtaqueAereo(int tipo) {
         tipoAtaqueAire = tipo;
         relojAtaque.restart(); 
         
-        if (tipo == 1) cuerpoShape.setFillColor(sf::Color(150, 255, 255)); 
-        if (tipo == 2) cuerpoShape.setFillColor(sf::Color::Cyan);
+        cuerpoShape.setFillColor(sf::Color::White);
     }
 }
 
@@ -284,7 +224,9 @@ void Personaje::aplicarAturdimiento(float duracion) {
     tipoAtaqueAire = 0; 
     velocidad.x = 0.f; 
 
-    cuerpoShape.setFillColor(sf::Color(150, 150, 150)); 
+    // Visualmente aturdido (Tinte gris oscuro)
+    cuerpoShape.setFillColor(sf::Color(100, 100, 100)); 
+    cuerpoShape.setScale(1.f, 1.f);
 }
 
 void Personaje::serLanzado(float fuerzaX, float fuerzaY) {
@@ -298,7 +240,7 @@ void Personaje::serLanzado(float fuerzaX, float fuerzaY) {
 }
 
 void Personaje::actualizar() {
-    // --- LÓGICA DE ESTADOS Y FÍSICAS ---
+    // Restaurar aturdimiento
     if (estaAturdido) {
         if (relojAturdimiento.getElapsedTime().asSeconds() >= tiempoAturdimiento) {
             estaAturdido = false;
@@ -310,18 +252,20 @@ void Personaje::actualizar() {
         }
     }
 
+    // Restaurar rodada
     if (estaRodando) {
         if (relojRodada.getElapsedTime().asSeconds() >= DURACION_RODADA) {
             estaRodando = false;
-            cuerpoShape.setRadius(radioOriginal);
-            cuerpoShape.setOrigin(radioOriginal, radioOriginal * 2.f);
+            cuerpoShape.setScale(1.f, 1.f);
             cuerpoShape.setFillColor(colorBase); 
         } else {
             velocidad.x = direccionRodada * VEL_RODADA;
-            cuerpoShape.setFillColor(sf::Color(colorBase.r, colorBase.g, colorBase.b, 130));
+            // Transparencia al rodar usando setFillColor
+            cuerpoShape.setFillColor(sf::Color(colorBase.r, colorBase.g, colorBase.b, 150));
         }
     }
 
+    // Restaurar ataques
     if (estaAtacando && !estaAturdido) {
         if (relojAtaque.getElapsedTime().asSeconds() >= DURACION_ATAQUE) {
             estaAtacando = false;
@@ -329,6 +273,7 @@ void Personaje::actualizar() {
             comboStep = 0;
             tipoAtaque = 0;
             cuerpoShape.setFillColor(colorBase); 
+            cuerpoShape.setScale(estaAgachado ? sf::Vector2f(0.7f, 0.7f) : sf::Vector2f(1.f, 1.f));
         }
     }
 
@@ -340,6 +285,7 @@ void Personaje::actualizar() {
         }
     }
 
+    // Físicas
     if (!enElSuelo) {
         velocidad.y += GRAVEDAD;
         estaEnElAire = true; 
@@ -352,6 +298,7 @@ void Personaje::actualizar() {
         velocidad.x = 0.f; 
     }
 
+    // Colisión con el suelo
     if (posicion.y >= ALTURA_SUELO) {
         posicion.y = ALTURA_SUELO;
         if (velocidad.y > 0.f) velocidad.y = 0.f;
@@ -360,66 +307,29 @@ void Personaje::actualizar() {
         estaAtacandoAire = false; 
     }
 
+    // Límites de la pantalla (ajusta según la resolución de tu ventana)
     if (posicion.x < 40.f) posicion.x = 40.f;
     if (posicion.x > 1240.f) posicion.x = 1240.f;
 
-    // --- INTERRUPTOR DE MÁQUINA DE ANIMACIÓN ---
-    if (!mapaTexturas.empty()) {
-        if (vida <= 0.f)                       inyectarTextura("derrota");
-        else if (estaAturdido)                 inyectarTextura("arrojado");
-        else if (esSuperAtaque)                inyectarTextura("carga"); 
-        else if (estaAtacando)                 inyectarTextura("carga"); 
-        else if (estaRodando)                  inyectarTextura("agacharse");
-        else if (estaAgachado)                 inyectarTextura("agacharse");
-        else if (std::abs(velocidad.x) > 0.1f) inyectarTextura("caminar");
-        else                                   inyectarTextura("caminar"); // Frame 0 = Idle
-
-        // Reloj del refresco de los frames
-        if (relojAnimacion.getElapsedTime().asSeconds() > 0.11f) {
-            frameActualCol++;
-            
-            if (vida <= 0.f && frameActualCol >= maxFramesAccion) {
-                frameActualCol = maxFramesAccion - 1;
-            } else {
-                frameActualCol %= maxFramesAccion;
-            }
-            relojAnimacion.restart();
-        }
-
-        // --- SISTEMA DE RECORTES (SOPORTA FILAS Y COLUMNAS) ---
-        int columnaCalculada = frameActualCol;
-        int filaCalculada = 0;
-
-        // Si la acción es arrojado, dividimos la animación en 2 filas
-        if (accionActual == "arrojado") {
-            columnaCalculada = frameActualCol % 6; 
-            filaCalculada = frameActualCol / 6;
-        }
-
-        spriteCombate.setTextureRect(sf::IntRect(
-            columnaCalculada * anchoFrame, 
-            filaCalculada * altoFrame, 
-            anchoFrame, 
-            altoFrame
-        ));
-        
-        // Espejado fluido de dirección
-        if (velocidad.x > 0) spriteCombate.setScale(2.2f, 2.2f);
-        else if (velocidad.x < 0) spriteCombate.setScale(-2.2f, 2.2f);
-    }
-
+    // Actualizamos la posición visual de la bolita
     cuerpoShape.setPosition(posicion);
+
+    // --- LÓGICA DE LA SOMBRA ---
+    float distanciaAlSuelo = ALTURA_SUELO - posicion.y;
+    float factorEscala = 1.0f - (distanciaAlSuelo / 450.f); // Se encoge hasta los 450px de altura
+    if (factorEscala < 0.3f) factorEscala = 0.3f; // No desaparece del todo
+
+    sombraShape.setPosition(posicion.x, ALTURA_SUELO + 35.f); // Un poco por debajo de los pies
+    sombraShape.setScale(factorEscala * 1.1f, factorEscala * 0.3f);
+    sombraShape.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(120 * factorEscala)));
 }
 
 void Personaje::dibujar(sf::RenderWindow& window) {
-    if (!mapaTexturas.empty()) {
-        spriteCombate.setPosition(posicion);
-        window.draw(spriteCombate);
-    } else {
-        window.draw(cuerpoShape);
-    }
+    window.draw(sombraShape); // Dibujar la sombra primero (atrás)
+    window.draw(cuerpoShape);
 }
 
+// --- GETTERS Y SETTERS BÁSICOS ---
 float Personaje::getPosicionX() const { return posicion.x; }
 float Personaje::getPosicionY() const { return posicion.y; }
 
@@ -438,7 +348,10 @@ bool Personaje::getEstaRodando() const { return estaRodando; }
 bool Personaje::getEstaCorriendo() const { return estaCorriendo; }
 bool Personaje::getEstaAturdido() const { return estaAturdido; }
 float Personaje::getVida() const { return vida; }
+sf::Color Personaje::getColorBase() const { return colorBase; }
 std::string Personaje::getNombre() const { return nombre; }
+
+// --- NUEVA FUNCIÓN AGREGADA ---
 std::string Personaje::getRutaAvatar() const { return rutaAvatar; }
 
 bool Personaje::getEstaEnElAire() const { return estaEnElAire; }

@@ -156,6 +156,8 @@ CombateMusical::CombateMusical() {
     
     indiceActivoJ1 = 0; 
     indiceActivoJ2 = 0; 
+    nivelActual = 1;
+    floatProximaDecision = 0.3f;
 
     cargarRoster(); 
     estadoActual = EstadoJuego::SeleccionPersonajes; 
@@ -163,12 +165,20 @@ CombateMusical::CombateMusical() {
 }
 
 void CombateMusical::cargarRoster() {
-    roster[0] = {"KAI", "assets/portraits/kai.png", sf::Color::Cyan}; 
-    roster[1] = {"LUCIEN", "assets/portraits/lucien.png", sf::Color(255, 140, 0)}; 
-
-    for (int i = 2; i < 12; i++) { 
-        roster[i] = {"BLOQUEADO", "", sf::Color(40, 40, 40)}; 
-    }
+    // Fila 1
+    roster[0] = {"CELESTE", "", sf::Color::Cyan};
+    roster[1] = {"NARANJA", "", sf::Color(255, 165, 0)};
+    roster[2] = {"ROJO",    "", sf::Color::Red};
+    roster[3] = {"VERDE",   "", sf::Color(0, 150, 0)};
+    roster[4] = {"AZUL",    "", sf::Color(0, 0, 139)};
+    roster[5] = {"MORADO",  "", sf::Color(128, 0, 128)};
+    // Fila 2
+    roster[6] = {"ROSA",    "", sf::Color(255, 192, 203)};
+    roster[7] = {"LIMA",    "", sf::Color(0, 255, 0)};
+    roster[8] = {"GRANATE", "", sf::Color(128, 0, 0)};
+    roster[9] = {"BLANCO",  "", sf::Color::White};
+    roster[10]= {"NEGRO",   "", sf::Color::Black};
+    roster[11]= {"GRIS",    "", sf::Color(128, 128, 128)};
 }
 
 void CombateMusical::inicializarPantallaSeleccion() {
@@ -301,6 +311,22 @@ void CombateMusical::actualizar() {
         float espacioY = 195.f; 
         selectorCuadrula.setPosition(xInicial + colSeleccionada * espacioX, yInicial + filaSeleccionada * espacioY); 
 
+        // --- EFECTO DE BRILLO DINÁMICO ---
+        int indiceHover = filaSeleccionada * 6 + colSeleccionada;
+        sf::Color colorPj = roster[indiceHover].colorRelleno;
+        
+        static sf::Clock relojEfecto;
+        float pulso = (std::sin(relojEfecto.getElapsedTime().asSeconds() * 10.f) + 1.f) / 2.f; // Oscila entre 0 y 1
+        
+        // Ajustamos el fondo para que palpite en opacidad
+        sf::Color fondo = colorPj;
+        fondo.a = static_cast<sf::Uint8>(40 + (60 * pulso)); 
+        selectorCuadrula.setFillColor(fondo);
+        
+        // El borde brilla ensanchándose y usamos un gris si el personaje es Negro
+        selectorCuadrula.setOutlineColor((colorPj == sf::Color::Black) ? sf::Color(120, 120, 120) : colorPj);
+        selectorCuadrula.setOutlineThickness(3.f + (5.f * pulso));
+
         if (turnoJugador1) { 
             if (tiempoSeleccionRestante > 0.f) { 
                 tiempoSeleccionRestante -= deltaTime; 
@@ -330,17 +356,8 @@ void CombateMusical::actualizar() {
 
         if (!turnoJugador1 && relojSeleccion.getElapsedTime().asSeconds() > 0.8f) { 
             if (equipoJ2.size() < 3) { 
-                std::random_device rd; std::mt19937 gen(rd()); std::uniform_int_distribution<> distAuto(0, 11); 
-                int idAzar = distAuto(gen); 
-                bool existe = false; 
-                for (const auto& pj : equipoJ2) if (pj.getNombre() == roster[idAzar].nombre) existe = true; 
-                if (!existe) { 
-                    Personaje bot; 
-                    bot.inicializar(roster[idAzar].nombre, roster[idAzar].rutaAvatar, roster[idAzar].colorRelleno, 980.f); 
-                    equipoJ2.push_back(bot); 
-                    vistasPreviasJ2[equipoJ2.size() - 1].setFillColor(roster[idAzar].colorRelleno); 
-                    relojSeleccion.restart(); 
-                }
+                generarNuevoEquipoBot();
+                relojSeleccion.restart();
             } else { 
                 reiniciarRelojes(0); 
                 estadoActual = EstadoJuego::Combate; 
@@ -355,7 +372,33 @@ void CombateMusical::actualizar() {
 
     if (rondaTerminada) { 
         if (relojEsperaRonda.getElapsedTime().asSeconds() >= 3.0f) { 
-            if (indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) { reiniciarRelojes(0); return; } 
+            if (indiceActivoJ2 >= 3) { 
+                // --- VICTORIA: AVANZAR DE NIVEL ---
+                nivelActual++;
+                floatProximaDecision -= 0.05f; // La IA reacciona 0.05s más rápido cada nivel
+                if (floatProximaDecision < 0.05f) floatProximaDecision = 0.05f;
+
+                equipoJ2.clear();
+                while(equipoJ2.size() < 3) generarNuevoEquipoBot();
+                
+                indiceActivoJ1 = 0; // El jugador vuelve a empezar con su primer personaje
+                indiceActivoJ2 = 0;
+                for(auto& pj : equipoJ1) pj.curarVida(250.f); // Curación total por superar el nivel
+                
+                tiempoRestante = 99;
+                rondaTerminada = false;
+                cargarAvatarsUI();
+                relojPelea.restart();
+                return;
+            }
+            
+            if (indiceActivoJ1 >= 3) { 
+                // --- DERROTA: VOLVER A SELECCIÓN ---
+                estadoActual = EstadoJuego::SeleccionPersonajes;
+                inicializarPantallaSeleccion();
+                return;
+            }
+
             equipoJ1[indiceActivoJ1].corregirPosicionX(300.f - equipoJ1[indiceActivoJ1].getPosicionX()); 
             equipoJ2[indiceActivoJ2].corregirPosicionX(980.f - equipoJ2[indiceActivoJ2].getPosicionX()); 
             tiempoRestante = 99; 
@@ -591,11 +634,19 @@ void CombateMusical::avanzarSiguienteRonda(int ganadorDeRonda) {
     hitsJ1 = 0; hitsJ2 = 0; 
 
     if (ganadorDeRonda == 1) { 
-        txtAnuncioKO.setString("K.O. - ROUND GANADO"); 
+        if (indiceActivoJ2 + 1 >= 3) 
+            txtAnuncioKO.setString("¡NIVEL COMPLETADO!"); 
+        else 
+            txtAnuncioKO.setString("K.O. - ROUND GANADO");
+            
         equipoJ1[indiceActivoJ1].curarVida(40.f); 
         indiceActivoJ2++; 
     } else { 
-        txtAnuncioKO.setString("K.O. - BOT GANADOR"); 
+        if (indiceActivoJ1 + 1 >= 3)
+            txtAnuncioKO.setString("FIN DE LA PARTIDA");
+        else
+            txtAnuncioKO.setString("K.O. - BOT GANADOR");
+            
         equipoJ2[indiceActivoJ2].curarVida(40.f); 
         indiceActivoJ1++; 
     }
@@ -659,6 +710,33 @@ void CombateMusical::acumularEnergiaJ2(float cantidad) {
     }
 }
 
+void CombateMusical::generarNuevoEquipoBot() {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distAuto(0, 11);
+
+    int idAzar = distAuto(gen);
+    bool yaEstaEnEquipo = false;
+
+    for (const auto& pj : equipoJ2) {
+        if (pj.getNombre() == roster[idAzar].nombre) {
+            yaEstaEnEquipo = true;
+            break;
+        }
+    }
+
+    if (!yaEstaEnEquipo) {
+        Personaje nuevoBot;
+        nuevoBot.inicializar(roster[idAzar].nombre, roster[idAzar].rutaAvatar, roster[idAzar].colorRelleno, 980.f);
+        equipoJ2.push_back(nuevoBot);
+        
+        // Actualizar los cuadritos de la UI (vistas previas) para el nuevo equipo
+        if (equipoJ2.size() <= 3) {
+            vistasPreviasJ2[equipoJ2.size() - 1].setFillColor(roster[idAzar].colorRelleno);
+        }
+    }
+}
+
 void CombateMusical::cargarAvatarsUI() {
     if (indiceActivoJ1 < 3) { 
         std::string ruta = equipoJ1[indiceActivoJ1].getRutaAvatar(); 
@@ -692,7 +770,7 @@ void CombateMusical::cargarAvatarsUI() {
         } else { 
             sf::Image img; img.create(85, 85, sf::Color(50, 50, 50)); texturaAvatarJ1.loadFromImage(img); 
             spriteAvatarJ1.setTexture(texturaAvatarJ1, true); spriteAvatarJ1.setScale(1.f, 1.f); 
-            spriteAvatarJ1.setColor(sf::Color::Cyan); 
+            spriteAvatarJ1.setColor(equipoJ1[indiceActivoJ1].getColorBase()); 
             std::cerr << "[ERROR] No se encontro la imagen J1 en: " << ruta << "\n"; 
         }
     }
@@ -728,7 +806,7 @@ void CombateMusical::cargarAvatarsUI() {
         } else { 
             sf::Image img; img.create(85, 85, sf::Color(50, 50, 50)); texturaAvatarJ2.loadFromImage(img); 
             spriteAvatarJ2.setTexture(texturaAvatarJ2, true); spriteAvatarJ2.setScale(1.f, 1.f); 
-            spriteAvatarJ2.setColor(sf::Color::Red); 
+            spriteAvatarJ2.setColor(equipoJ2[indiceActivoJ2].getColorBase()); 
             std::cerr << "[ERROR] No se encontro la imagen J2 en: " << ruta << "\n2"; 
         }
     }

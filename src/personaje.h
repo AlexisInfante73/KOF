@@ -3,36 +3,14 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
-#include <map>
-
-// --- CONSTANTES DEL JUEGO ---
-#ifndef ALTURA_SUELO
-#define ALTURA_SUELO 500.f
-#endif
-#ifndef VEL_CAMINAR
-#define VEL_CAMINAR 5.f
-#endif
-#ifndef VEL_SPRINT
-#define VEL_SPRINT 9.f
-#endif
-#ifndef VEL_RODADA
-#define VEL_RODADA 7.f
-#endif
-#ifndef FUERZA_SALTO
-#define FUERZA_SALTO -15.f
-#endif
-#ifndef GRAVEDAD
-#define GRAVEDAD 0.5f
-#endif
-#ifndef DURACION_RODADA
-#define DURACION_RODADA 0.5f
-#endif
-#ifndef DURACION_ATAQUE
-#define DURACION_ATAQUE 0.3f
-#endif
 
 class Personaje {
 private:
+    // --- COMPONENTES GRÁFICOS (MODO BOLITA) ---
+    sf::CircleShape cuerpoShape;
+    sf::CircleShape sombraShape;
+    sf::Color colorBase;
+
     // --- ATRIBUTOS DE CONFIGURACIÓN Y ESTADO ---
     float       radioOriginal;
     bool        enElSuelo;
@@ -45,7 +23,7 @@ private:
     float       vida;
     int         comboStep; 
     std::string nombre;
-    std::string rutaAvatar;
+    std::string rutaAvatar; // <-- Variable para la imagen añadida
     
     // --- COMBATE AÉREO ---
     bool        estaEnElAire;
@@ -66,34 +44,19 @@ private:
     float       tiempoLimiteDobleToque;
     bool        estaCorriendo;
 
-    // --- ANIMACIÓN DE SPRITES (MIGRADO A HOJAS INDEPENDIENTES) ---
-    int         anchoFrame;
-    int         altoFrame;
-    int         frameActualCol;
-    int         maxFramesAccion; // Cuántos frames reales tiene la tira actual
-    sf::Clock   relojAnimacion;
-    
-    // Almacenamiento dinámico de las hojas de textura extraídas de tu carpeta
-    std::map<std::string, sf::Texture> mapaTexturas;
-    std::string accionActual; // Guarda qué animación está corriendo ("caminar", "agacharse", etc.)
-
-    // --- COMPONENTES GRÁFICOS Y RELOJES ---
-    sf::CircleShape cuerpoShape;
-    sf::Sprite       spriteCombate;  
-    sf::Color        colorBase;
-    sf::Clock        relojDobleToque;
-    sf::Clock        relojRodada;
-    sf::Clock        relojAtaque;
-    sf::Clock        relojAturdimiento; 
-
-    // Métodos internos de control de texturas
-    void inyectarTextura(const std::string& claveAccion);
+    // --- RELOJES ---
+    sf::Clock   relojDobleToque;
+    sf::Clock   relojRodada;
+    sf::Clock   relojAtaque;
+    sf::Clock   relojAturdimiento; 
 
 public:
     Personaje();
     
     // --- INICIALIZACIÓN Y LÓGICA PRINCIPAL ---
+    // Función actualizada para recibir la ruta de la imagen
     void inicializar(std::string nombrePeleador, std::string rutaImg, sf::Color color, float xInicial);
+    
     void verificarDobleToque(sf::Event& evento, float xRival);
     void caminar(float direccion, bool correr = false); 
     void saltar();
@@ -121,8 +84,9 @@ public:
     bool        getEstaCorriendo() const;
     bool        getEstaAturdido() const; 
     float       getVida() const;
+    sf::Color   getColorBase() const;
     std::string getNombre() const;
-    std::string getRutaAvatar() const;
+    std::string getRutaAvatar() const; // <-- Getter añadido
     
     bool        getEstaEnElAire() const;
     bool        getEstaAtacandoAire() const;
