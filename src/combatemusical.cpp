@@ -183,7 +183,7 @@ void CombateMusical::inicializarPantallaSeleccion() {
         spriteSeleccion.setScale(1280.f / texturaSeleccion.getSize().x, 720.f / texturaSeleccion.getSize().y);
     }
 
-    selectorCuadrula.setSize(sf::Vector2f(122.f, 172.f)); 
+    selectorCuadrula.setSize(sf::Vector2f(104.f, 164.f)); 
     selectorCuadrula.setFillColor(sf::Color(0, 255, 255, 70)); 
     selectorCuadrula.setOutlineColor(sf::Color::Cyan); 
     selectorCuadrula.setOutlineThickness(4.f);
@@ -275,8 +275,11 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
     if (evento.type == sf::Event::KeyPressed) {
         if (evento.key.code == sf::Keyboard::Space) equipoJ1[indiceActivoJ1].saltar();
         
-        // Ahora la validación de spam y estado de ataque se maneja internamente en Personaje::lanzarAtaque
-        bool puedeIntentarAtaque = !equipoJ1[indiceActivoJ1].getEstaAturdido();
+        // --- MECÁNICA ANTI-SPAM DE BOTONES ---
+        // Exigimos que no esté atacando, que no esté aturdido y que hayan pasado al menos 0.15s desde el último golpe
+        bool puedeAtacar = !equipoJ1[indiceActivoJ1].getEstaAtacando() && 
+                           !equipoJ1[indiceActivoJ1].getEstaAturdido() && 
+                           relojCooldownJ1.getElapsedTime().asSeconds() > 0.15f;
 
         if (puedeIntentarAtaque) {
             if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; }
@@ -301,10 +304,14 @@ void CombateMusical::actualizar() {
     float deltaTime = relojDeltaTime.restart().asSeconds(); 
 
     if (estadoActual == EstadoJuego::SeleccionPersonajes) {
-        float xInicial = 335.f; 
+        // --- RE-CUADRADO DE LA SELECCIÓN ---
+        // Ajustamos xInicial y espacioX para que la cuadrícula de 6 columnas esté centrada
+        float xInicial = 313.f; 
         float yInicial = 145.f; 
-        float espacioX = 122.f; 
-        float espacioY = 178.f; 
+        float espacioX = 110.f; 
+        float espacioY = 170.f; 
+        
+        selectorCuadrula.setSize(sf::Vector2f(104.f, 164.f)); // Ajustamos el tamaño del selector al nuevo espacio
         selectorCuadrula.setPosition(xInicial + colSeleccionada * espacioX, yInicial + filaSeleccionada * espacioY);
 
         if (turnoJugador1) {
@@ -353,8 +360,10 @@ void CombateMusical::actualizar() {
             }
         }
 
-        for(size_t i = 0; i < equipoJ1.size(); i++) vistasPreviasJ1[i].setPosition(110.f + (i * 90.f), 600.f); 
-        for(size_t i = 0; i < equipoJ2.size(); i++) vistasPreviasJ2[i].setPosition(900.f + (i * 90.f), 600.f); 
+        // Reposicionamos los cuadros de los personajes elegidos para que sean simétricos
+        // J1 a la izquierda, J2 a la derecha (creciendo hacia el centro)
+        for(int i = 0; i < 3; i++) vistasPreviasJ1[i].setPosition(100.f + (i * 85.f), 615.f); 
+        for(int i = 0; i < 3; i++) vistasPreviasJ2[i].setPosition(1280.f - 100.f - 75.f - (i * 85.f), 615.f); 
 
         return; 
     }
@@ -429,6 +438,7 @@ void CombateMusical::actualizar() {
 
             if (dmg > 0.f) {
                 equipoJ2[indiceActivoJ2].recibirDanio(dmg);
+                equipoJ2[indiceActivoJ2].aplicarAturdimiento(0.15f); // Hitstun para evitar contra-spam
                 acumularEnergiaJ2(6.f); 
                 
                 hitsJ1++;
@@ -464,6 +474,7 @@ void CombateMusical::actualizar() {
 
             if (dmg > 0.f) {
                 equipoJ1[indiceActivoJ1].recibirDanio(dmg);
+                equipoJ1[indiceActivoJ1].aplicarAturdimiento(0.15f); // Hitstun para el jugador
                 acumularEnergiaJ1(6.f); 
                 
                 hitsJ2++;

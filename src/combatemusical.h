@@ -4,8 +4,9 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
-#include "personaje.h" 
+#include "personaje.h" // Asegúrate de tener este archivo en tu proyecto
 
+// --- ESTRUCTURA PARA EL MENÚ (NUEVO) ---
 struct DatosPersonaje {
     std::string nombre;
     std::string rutaAvatar;
@@ -34,6 +35,7 @@ private:
     sf::Text txtTiempoSeleccion;
     sf::Clock relojSeleccion;
     
+    // Elementos visuales y de control del menú
     DatosPersonaje roster[12];
     bool turnoJugador1;
     sf::RectangleShape fondoOcultarTiempo; 
@@ -91,22 +93,22 @@ private:
     bool botGolpeImpactadoEsteTurno;
     bool rondaTerminada;
     
-    // --- NUEVO: Progresión y Anti-Spam ---
-    int rachaVictorias;           // Controla la dificultad de la IA
-    sf::Clock relojCooldownJ1;    // Evita el spam de botones del jugador
-    
     // --- Relojes y Tiempos ---
+    sf::Clock   relojCooldownJ1;
+    sf::Clock   relojCooldownJ2;
     sf::Clock relojPelea;
     sf::Clock relojEsperaRonda;
     sf::Clock relojDecisionBot;
     sf::Clock relojComboJ1;
     sf::Clock relojComboJ2;
-    sf::Clock relojDeltaTime; 
+    sf::Clock relojDeltaTime; // Reloj para control de FPS
 
     // --- IA Bot ---
     float floatProximaDecision;
     bool botQuiereAgacharse;
     bool botQuiereDefenderse;
+    int nivelActual;
+    int rachaVictorias;
 
     // --- Métodos Internos ---
     void cargarRoster();
@@ -116,6 +118,7 @@ private:
     void actualizarIABot();
     void acumularEnergiaJ1(float cantidad);
     void acumularEnergiaJ2(float cantidad);
+    void generarNuevoEquipoBot();
     void cargarAvatarsUI();
 
 public:
