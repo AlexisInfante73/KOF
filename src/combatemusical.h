@@ -31,6 +31,8 @@ private:
     // --- Recursos de Audio ---
     sf::SoundBuffer bufferGolpeLeve;
     sf::SoundBuffer bufferGolpeFuerte;
+    sf::SoundBuffer bufferPatadaLeve;
+    sf::SoundBuffer bufferPatadaFuerte;
     sf::SoundBuffer bufferEspecial;
     sf::SoundBuffer bufferCubriendo;
     sf::Sound sonidoImpacto;

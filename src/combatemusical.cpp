@@ -19,8 +19,14 @@ void CombateMusical::reproducirSonidoAtaque(int tipo, bool cubierto) {
         sonidoImpacto.setBuffer(bufferCubriendo);
     } else if (tipo == 5) {
         sonidoImpacto.setBuffer(bufferEspecial);
-    } else if (tipo == 2 || tipo == 4) {
+    } else if (tipo == 1) {
+        sonidoImpacto.setBuffer(bufferGolpeLeve);
+    } else if (tipo == 2) {
         sonidoImpacto.setBuffer(bufferGolpeFuerte);
+    } else if (tipo == 3) {
+        sonidoImpacto.setBuffer(bufferPatadaLeve);
+    } else if (tipo == 4) {
+        sonidoImpacto.setBuffer(bufferPatadaFuerte);
     } else {
         sonidoImpacto.setBuffer(bufferGolpeLeve);
     }
@@ -58,17 +64,23 @@ CombateMusical::CombateMusical() {
         }
     }
 
-    if (!cargarBufferAudio(bufferGolpeLeve, "golpe leve.m4a")) {
-        std::cerr << "ERROR: No se pudo cargar assets/sound/golpe leve.m4a\n";
+    if (!cargarBufferAudio(bufferGolpeLeve, "golpe-leve.mp3")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/golpe-leve.mp3\n";
     }
-    if (!cargarBufferAudio(bufferGolpeFuerte, "golpe fuerte.m4a")) {
-        std::cerr << "ERROR: No se pudo cargar assets/sound/golpe fuerte.m4a\n";
+    if (!cargarBufferAudio(bufferGolpeFuerte, "golpe-fuerte.mp3")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/golpe-fuerte.mp3\n";
+    }
+    if (!cargarBufferAudio(bufferPatadaLeve, "patada-leve.mp3")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/patada-leve.mp3\n";
+    }
+    if (!cargarBufferAudio(bufferPatadaFuerte, "patada-fuerte.mp3")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/patada-fuerte.mp3\n";
     }
     if (!cargarBufferAudio(bufferEspecial, "especial.mp3")) {
         std::cerr << "ERROR: No se pudo cargar assets/sound/especial.mp3\n";
     }
-    if (!cargarBufferAudio(bufferCubriendo, "cubriendo.m4a")) {
-        std::cerr << "ERROR: No se pudo cargar assets/sound/cubriendo.m4a\n";
+    if (!cargarBufferAudio(bufferCubriendo, "cubriendo.mp3")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/cubriendo.mp3\n";
     }
     sonidoImpacto.setVolume(80.f);
 
