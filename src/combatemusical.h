@@ -29,9 +29,10 @@ private:
     sf::Font fuenteUI;
 
     // --- Recursos de Audio ---
-    sf::SoundBuffer bufferGolpe;
-    sf::SoundBuffer bufferPatada;
+    sf::SoundBuffer bufferGolpeLeve;
+    sf::SoundBuffer bufferGolpeFuerte;
     sf::SoundBuffer bufferEspecial;
+    sf::SoundBuffer bufferCubriendo;
     sf::Sound sonidoImpacto;
     sf::Music musicaMenu;
     sf::Music musicaCombate;
@@ -102,6 +103,11 @@ private:
     bool botGolpeImpactadoEsteTurno;
     bool rondaTerminada;
     
+    // --- Sistema de Combos ---
+    std::vector<int> bufferEntradasJ1;
+    sf::Clock relojBufferJ1;
+    float duracionFlashSuper;
+    
     // --- Relojes y Tiempos ---
     sf::Clock   relojCooldownJ1;
     sf::Clock   relojCooldownJ2;
@@ -129,10 +135,14 @@ private:
     void acumularEnergiaJ2(float cantidad);
     void generarNuevoEquipoBot();
     void cargarAvatarsUI();
+    bool cargarBufferAudio(sf::SoundBuffer& buffer, const std::string& archivo);
+    bool abrirMusica(sf::Music& musica, const std::string& archivo);
+    void reproducirSonidoAtaque(int tipo, bool cubierto);
 
 public:
     CombateMusical();
-    void reiniciarRelojes(); 
+    void reiniciarSeleccion();
+    void reiniciarRelojes();
     void procesarEntrada(sf::Event& evento);
     void actualizar();
     void dibujar(sf::RenderWindow& window);

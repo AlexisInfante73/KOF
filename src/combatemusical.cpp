@@ -4,17 +4,46 @@
 #include <random> 
 #include <cstdio> 
 
+bool CombateMusical::cargarBufferAudio(sf::SoundBuffer& buffer, const std::string& archivo) {
+    const std::string ruta = "assets/sound/" + archivo;
+    return buffer.loadFromFile(ruta) || buffer.loadFromFile("../" + ruta);
+}
+
+bool CombateMusical::abrirMusica(sf::Music& musica, const std::string& archivo) {
+    const std::string ruta = "assets/sound/" + archivo;
+    return musica.openFromFile(ruta) || musica.openFromFile("../" + ruta);
+}
+
+void CombateMusical::reproducirSonidoAtaque(int tipo, bool cubierto) {
+    if (cubierto) {
+        sonidoImpacto.setBuffer(bufferCubriendo);
+    } else if (tipo == 5) {
+        sonidoImpacto.setBuffer(bufferEspecial);
+    } else if (tipo == 2 || tipo == 4) {
+        sonidoImpacto.setBuffer(bufferGolpeFuerte);
+    } else {
+        sonidoImpacto.setBuffer(bufferGolpeLeve);
+    }
+    sonidoImpacto.play();
+}
+
 CombateMusical::CombateMusical() {
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> distEscenario(1, 4);
     
     int escenarioAleatorio = distEscenario(gen);
-    std::string rutaFondo = "assets/images/fondo_batalla_" + std::to_string(escenarioAleatorio) + ".png";
+    std::string nombreFondo = "fondo_batalla_" + std::to_string(escenarioAleatorio);
+    std::string rutaFondo = "assets/images/" + nombreFondo + ".png";
+    std::string rutaFondoAlterna = "assets/images/" + nombreFondo + ".jpeg";
 
     if (!texturaEscenario.loadFromFile(rutaFondo)) {
-        if (!texturaEscenario.loadFromFile("../" + rutaFondo)) {
-            std::cerr << "ERROR: No se pudo cargar la textura del escenario: " << rutaFondo << "\n";
+        if (!texturaEscenario.loadFromFile(rutaFondoAlterna)) {
+            if (!texturaEscenario.loadFromFile("../" + rutaFondo)) {
+                if (!texturaEscenario.loadFromFile("../" + rutaFondoAlterna)) {
+                    std::cerr << "ERROR: No se pudo cargar la textura del escenario: " << rutaFondo << "\n";
+                }
+            }
         }
     }
     
@@ -28,6 +57,20 @@ CombateMusical::CombateMusical() {
             std::cerr << "ERROR: No se pudo cargar la fuente COMIC.TTF\n";
         }
     }
+
+    if (!cargarBufferAudio(bufferGolpeLeve, "golpe leve.m4a")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/golpe leve.m4a\n";
+    }
+    if (!cargarBufferAudio(bufferGolpeFuerte, "golpe fuerte.m4a")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/golpe fuerte.m4a\n";
+    }
+    if (!cargarBufferAudio(bufferEspecial, "especial.mp3")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/especial.mp3\n";
+    }
+    if (!cargarBufferAudio(bufferCubriendo, "cubriendo.m4a")) {
+        std::cerr << "ERROR: No se pudo cargar assets/sound/cubriendo.m4a\n";
+    }
+    sonidoImpacto.setVolume(80.f);
 
     txtCronometro.setFont(fuenteUI);
     txtCronometro.setCharacterSize(45);
@@ -147,6 +190,7 @@ CombateMusical::CombateMusical() {
     
     indiceActivoJ1 = 0;
     indiceActivoJ2 = 0;
+    duracionFlashSuper = 0.f;
 
     // Inicializamos la dificultad en Cero
     rachaVictorias = 0;
@@ -157,18 +201,23 @@ CombateMusical::CombateMusical() {
 }
 
 void CombateMusical::cargarRoster() {
-    roster[0] = {"KYO", "assets/portraits/KYO.png", sf::Color::Cyan};
-    roster[1] = {"TERRY", "assets/portraits/TERRY.png", sf::Color(30, 144, 255)};
-    roster[2] = {"RYO", "assets/portraits/RYO.png", sf::Color(0, 0, 205)};
-    roster[3] = {"IORI", "assets/portraits/IORI.png", sf::Color::Red};
-    roster[4] = {"KULA", "assets/portraits/KULA.png", sf::Color(255, 69, 0)};
-    roster[5] = {"K'", "assets/portraits/K'.png", sf::Color(139, 0, 0)};
-    roster[6] = {"MAI", "assets/portraits/MAI.png", sf::Color::Red};
-    roster[7] = {"ATHENA", "assets/portraits/ATHENA.png", sf::Color::Magenta};
-    roster[8] = {"KIM", "assets/portraits/KIM.png", sf::Color::White};
-    roster[9] = {"JOE", "assets/portraits/JOE.png", sf::Color::Yellow};
-    roster[10]= {"BENIMARU", "assets/portraits/BENIMARU.png", sf::Color::Yellow};
-    roster[11]= {"CHIZURU", "assets/portraits/CHIZURU.png", sf::Color::White};
+    roster[0] = {"KYO", "assets/portraits/KYO.png", sf::Color(0, 174, 220)};
+    roster[1] = {"TERRY", "assets/portraits/TERRY.png", sf::Color(255, 127, 39)};
+    roster[2] = {"RYO", "assets/portraits/RYO.png", sf::Color(237, 28, 36)};
+    roster[3] = {"IORI", "assets/portraits/IORI.png", sf::Color(34, 177, 76)};
+    roster[4] = {"KULA", "assets/portraits/KULA.png", sf::Color(63, 72, 204)};
+    roster[5] = {"K'", "assets/portraits/K'.png", sf::Color(163, 73, 164)};
+    roster[6] = {"MAI", "assets/portraits/MAI.png", sf::Color(255, 174, 201)};
+    roster[7] = {"ATHENA", "assets/portraits/ATHENA.png", sf::Color(181, 230, 29)};
+    roster[8] = {"KIM", "assets/portraits/KIM.png", sf::Color(160, 0, 24)};
+    roster[9] = {"JOE", "assets/portraits/JOE.png", sf::Color::White};
+    roster[10]= {"BENIMARU", "assets/portraits/BENIMARU.png", sf::Color::Black};
+    roster[11]= {"CHIZURU", "assets/portraits/CHIZURU.png", sf::Color(127, 127, 127)};
+}
+
+void CombateMusical::reiniciarSeleccion() {
+    estadoActual = EstadoJuego::SeleccionPersonajes;
+    inicializarPantallaSeleccion();
 }
 
 void CombateMusical::inicializarPantallaSeleccion() {
@@ -189,15 +238,15 @@ void CombateMusical::inicializarPantallaSeleccion() {
     // Elegimos aleatoriamente entre menu1 y menu2
     std::random_device rd_m;
     std::mt19937 gen_m(rd_m());
-    std::string cancionMenu = (gen_m() % 2 == 0) ? "assets/sounds/menu1.ogg" : "assets/sounds/menu2.ogg";
+    std::string cancionMenu = (gen_m() % 2 == 0) ? "menu1.mp3" : "menu2.mp3";
 
-    if (musicaMenu.openFromFile(cancionMenu)) {
+    if (abrirMusica(musicaMenu, cancionMenu)) {
         musicaMenu.setLoop(true);
         musicaMenu.setVolume(50.f); // Volumen moderado para el menú
         musicaMenu.play();
     }
 
-    selectorCuadrula.setSize(sf::Vector2f(104.f, 164.f)); 
+    selectorCuadrula.setSize(sf::Vector2f(132.f, 150.f)); 
     selectorCuadrula.setFillColor(sf::Color(0, 255, 255, 70)); 
     selectorCuadrula.setOutlineColor(sf::Color::Cyan); 
     selectorCuadrula.setOutlineThickness(4.f);
@@ -302,10 +351,33 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
             // Reiniciamos el cooldown del controlador al detectar una intención de ataque válida
             relojCooldownJ1.restart();
 
-            if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; }
-            if (evento.key.code == sf::Keyboard::J) { equipoJ1[indiceActivoJ1].lanzarAtaque(2); golpeImpactadoEsteTurno = false; }
-            if (evento.key.code == sf::Keyboard::K) { equipoJ1[indiceActivoJ1].lanzarAtaque(3); golpeImpactadoEsteTurno = false; }
-            if (evento.key.code == sf::Keyboard::L) { equipoJ1[indiceActivoJ1].lanzarAtaque(4); golpeImpactadoEsteTurno = false; }
+            int tipoPresionado = 0;
+            if (evento.key.code == sf::Keyboard::H) tipoPresionado = 1;
+            if (evento.key.code == sf::Keyboard::J) tipoPresionado = 2;
+            if (evento.key.code == sf::Keyboard::K) tipoPresionado = 3;
+            if (evento.key.code == sf::Keyboard::L) tipoPresionado = 4;
+
+            if (tipoPresionado > 0) {
+                if (equipoJ1[indiceActivoJ1].lanzarAtaque(tipoPresionado)) {
+                    golpeImpactadoEsteTurno = false;
+                    
+                    // Lógica de buffer de combos
+                    if (relojBufferJ1.getElapsedTime().asSeconds() > 1.0f) bufferEntradasJ1.clear();
+                    bufferEntradasJ1.push_back(tipoPresionado);
+                    relojBufferJ1.restart();
+
+                    // Verificar si coincide con el combo secreto del personaje
+                    auto comboReq = equipoJ1[indiceActivoJ1].getComboSecreto();
+                    if (bufferEntradasJ1.size() >= 3) {
+                        std::vector<int> ultimos(bufferEntradasJ1.end() - 3, bufferEntradasJ1.end());
+                        if (ultimos == comboReq && nivelesJ1 >= 1) {
+                            if (equipoJ1[indiceActivoJ1].lanzarAtaque(5)) { 
+                                nivelesJ1--; duracionFlashSuper = 0.8f; equipoJ2[indiceActivoJ2].setCongelado(true);
+                            }
+                        }
+                    }
+                }
+            }
             
             if (evento.key.code == sf::Keyboard::E) {
                 if (nivelesJ1 >= 1) {
@@ -313,6 +385,8 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
                     if (equipoJ1[indiceActivoJ1].lanzarAtaque(5)) {
                         nivelesJ1--;
                         golpeImpactadoEsteTurno = false;
+                        duracionFlashSuper = 0.8f; 
+                        equipoJ2[indiceActivoJ2].setCongelado(true);
                     }
                 }
             }
@@ -326,13 +400,17 @@ void CombateMusical::actualizar() {
     if (estadoActual == EstadoJuego::SeleccionPersonajes) {
         // --- RE-CUADRADO DE LA SELECCIÓN ---
         // Ajustamos xInicial y espacioX para que la cuadrícula de 6 columnas esté centrada
-        float xInicial = 313.f; 
-        float yInicial = 145.f; 
-        float espacioX = 110.f; 
-        float espacioY = 170.f; 
+        float xInicial = 417.f; 
+        float yInicial = 136.f; 
+        float espacioX = 138.f; 
+        float espacioY = 181.f; 
         
-        selectorCuadrula.setSize(sf::Vector2f(104.f, 164.f)); // Ajustamos el tamaño del selector al nuevo espacio
+        selectorCuadrula.setSize(sf::Vector2f(132.f, 150.f)); // Ajustamos el tamaño del selector al marco del fondo
         selectorCuadrula.setPosition(xInicial + colSeleccionada * espacioX, yInicial + filaSeleccionada * espacioY);
+        int indiceSeleccion = filaSeleccionada * 6 + colSeleccionada;
+        sf::Color colorSeleccion = roster[indiceSeleccion].colorRelleno;
+        selectorCuadrula.setFillColor(sf::Color(colorSeleccion.r, colorSeleccion.g, colorSeleccion.b, 70));
+        selectorCuadrula.setOutlineColor(colorSeleccion);
 
         if (turnoJugador1) {
             if (tiempoSeleccionRestante > 0.f) {
@@ -380,7 +458,7 @@ void CombateMusical::actualizar() {
 
                 // --- CAMBIO DE MÚSICA A COMBATE ---
                 musicaMenu.stop();
-                if (musicaCombate.openFromFile("assets/sounds/combate.ogg")) {
+                if (abrirMusica(musicaCombate, "combate.mp3")) {
                     musicaCombate.setLoop(true);
                     musicaCombate.setVolume(60.f);
                     musicaCombate.play();
@@ -390,8 +468,8 @@ void CombateMusical::actualizar() {
 
         // Reposicionamos los cuadros de los personajes elegidos para que sean simétricos
         // J1 a la izquierda, J2 a la derecha (creciendo hacia el centro)
-        for(int i = 0; i < 3; i++) vistasPreviasJ1[i].setPosition(100.f + (i * 85.f), 615.f); 
-        for(int i = 0; i < 3; i++) vistasPreviasJ2[i].setPosition(1280.f - 100.f - 75.f - (i * 85.f), 615.f); 
+        for(int i = 0; i < 3; i++) vistasPreviasJ1[i].setPosition(145.f + (i * 114.f), 582.f);
+        for(int i = 0; i < 3; i++) vistasPreviasJ2[i].setPosition(805.f + (i * 114.f), 582.f);
 
         return; 
     }
@@ -428,6 +506,25 @@ void CombateMusical::actualizar() {
 
     if (indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) return;
 
+    // --- Manejo del Congelamiento (Super Flash) ---
+    if (duracionFlashSuper > 0.f) {
+        duracionFlashSuper -= deltaTime;
+        equipoJ1[indiceActivoJ1].actualizar(); 
+        equipoJ2[indiceActivoJ2].actualizar();
+        if (duracionFlashSuper <= 0.f) {
+            equipoJ1[indiceActivoJ1].setCongelado(false);
+            equipoJ2[indiceActivoJ2].setCongelado(false);
+        }
+        // Actualizamos las barras en el HUD para que el daño se vea reflejado
+        float vidaJ1 = equipoJ1[indiceActivoJ1].getVida();
+        float vidaJ2 = equipoJ2[indiceActivoJ2].getVida();
+        barraVidaJ1.setSize(sf::Vector2f((vidaJ1 / 250.f) * 420.f, 25.f));
+        float anchoJ2 = (vidaJ2 / 250.f) * 420.f;
+        barraVidaJ2.setSize(sf::Vector2f(anchoJ2, 25.f));
+        barraVidaJ2.setPosition(1280.f - 135.f - anchoJ2, 42.f);
+        return;
+    }
+
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) equipoJ1[indiceActivoJ1].caminar(-1.f);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) equipoJ1[indiceActivoJ1].caminar(1.f);
     if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) equipoJ1[indiceActivoJ1].setAgachado(true); else equipoJ1[indiceActivoJ1].setAgachado(false);
@@ -454,17 +551,19 @@ void CombateMusical::actualizar() {
             bool rivalEvadiendo = equipoJ2[indiceActivoJ2].getEstaAgachado();
             float dmg = 0.f;
 
-            if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ1(5.f); } 
-            if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ1(6.f); }
-            if (tipo == 2 && !rivalEvadiendo) { dmg = 12.f; acumularEnergiaJ1(7.f); }
-            if (tipo == 4 && !rivalEvadiendo) { dmg = 15.f; acumularEnergiaJ1(9.f); }
+            if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ1(5.f); } // Golpe Leve
+            if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ1(6.f); } // Patada Leve
+            if (tipo == 2 && !rivalEvadiendo) { dmg = 12.f; acumularEnergiaJ1(7.f); } // Golpe Fuerte
+            if (tipo == 4 && !rivalEvadiendo) { dmg = 15.f; acumularEnergiaJ1(9.f); } // Patada Fuerte
             if (tipo == 5) { dmg = 45.f; } 
 
-            if (j2EnGuardia && tipo != 5) { 
+            bool golpeCubierto = j2EnGuardia && tipo != 5;
+            if (golpeCubierto) { 
                 dmg = dmg * 0.2f; 
             }
 
             if (dmg > 0.f) {
+                reproducirSonidoAtaque(tipo, golpeCubierto);
                 equipoJ2[indiceActivoJ2].recibirDanio(dmg);
                 equipoJ2[indiceActivoJ2].aplicarAturdimiento(0.15f); // Hitstun para evitar contra-spam
                 acumularEnergiaJ2(6.f); 
@@ -490,17 +589,19 @@ void CombateMusical::actualizar() {
             bool jugador1Evadiendo = equipoJ1[indiceActivoJ1].getEstaAgachado();
             float dmg = 0.f;
 
-            if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ2(5.f); }
-            if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ2(6.f); }
-            if (tipo == 2 && !jugador1Evadiendo) { dmg = 12.f; acumularEnergiaJ2(7.f); }
-            if (tipo == 4 && !jugador1Evadiendo) { dmg = 15.f; acumularEnergiaJ2(9.f); }
+            if (tipo == 1) { dmg = 7.f;  acumularEnergiaJ2(5.f); } // Golpe Leve
+            if (tipo == 3) { dmg = 9.f;  acumularEnergiaJ2(6.f); } // Patada Leve
+            if (tipo == 2 && !jugador1Evadiendo) { dmg = 12.f; acumularEnergiaJ2(7.f); } // Golpe Fuerte
+            if (tipo == 4 && !jugador1Evadiendo) { dmg = 15.f; acumularEnergiaJ2(9.f); } // Patada Fuerte
             if (tipo == 5) { dmg = 45.f; } 
 
-            if (j1EnGuardia && tipo != 5) {
+            bool golpeCubierto = j1EnGuardia && tipo != 5;
+            if (golpeCubierto) {
                 dmg = dmg * 0.2f;
             }
 
             if (dmg > 0.f) {
+                reproducirSonidoAtaque(tipo, golpeCubierto);
                 equipoJ1[indiceActivoJ1].recibirDanio(dmg);
                 equipoJ1[indiceActivoJ1].aplicarAturdimiento(0.15f); // Hitstun para el jugador
                 acumularEnergiaJ1(6.f); 
@@ -697,7 +798,8 @@ void CombateMusical::actualizarIABot() {
             } else if (nivelesJ2 >= 1 && decision < probEspecial) { 
                 if (equipoJ2[indiceActivoJ2].lanzarAtaque(5)) {
                     nivelesJ2--; 
-                    botGolpeImpactadoEsteTurno = false; botQuiereAgacharse = false; botQuiereDefenderse = false;
+                    botGolpeImpactadoEsteTurno = false; 
+                    duracionFlashSuper = 0.8f; equipoJ1[indiceActivoJ1].setCongelado(true);
                 }
             } else if (decision < 70) {
                 equipoJ2[indiceActivoJ2].lanzarAtaque((dist(gen) % 4) + 1);
@@ -755,7 +857,7 @@ void CombateMusical::cargarAvatarsUI() {
         } else {
             sf::Image img; img.create(85, 85, sf::Color(50, 50, 50)); texturaAvatarJ2.loadFromImage(img);
             spriteAvatarJ2.setTexture(texturaAvatarJ2, true); spriteAvatarJ2.setScale(1.f, 1.f);
-            spriteAvatarJ2.setColor(sf::Color::Red);
+            spriteAvatarJ2.setColor(sf::Color::Magenta);
         }
     }
 }

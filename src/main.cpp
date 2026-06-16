@@ -63,8 +63,11 @@ int main() {
         " - Tecla [ S ] : Agacharse (Evasion de golpes activa)\n"
         " - [ ESPACIO ] : Saltar (Fisicas con gravedad simulada)\n\n"
         " Acciones de Ataque (Mano Derecha):\n"
-        " - Tecla [ J ] : Lanzar golpe directo\n"
-        " - Tecla [ K ] : Conectar patada media\n\n"
+        " - Tecla [ H ] : Golpe Leve\n"
+        " - Tecla [ J ] : Golpe Fuerte\n"
+        " - Tecla [ K ] : Patada Leve\n"
+        " - Tecla [ L ] : Patada Fuerte\n"
+        " - Tecla [ E ] : Ataque Especial (Nivel 1+)\n\n"
         "Presiona [ ESCAPE ] para volver al Menu Principal.", fuenteJuego, 24);
     txtComoJugarContenido.setFillColor(sf::Color::White);
 
@@ -125,11 +128,15 @@ int main() {
                 if (evento.key.code == sf::Keyboard::Enter) {
                     switch (estadoActual) {
                         case EstadoApp::MenuPrincipal:
-                            if (opcionMenuSeleccionada == 0) estadoActual = EstadoApp::RegistroCombatientes;      
+                            if (opcionMenuSeleccionada == 0) {
+                                combate.reiniciarSeleccion();
+                                estadoActual = EstadoApp::SeleccionPersonaje;
+                            }
                             else if (opcionMenuSeleccionada == 1) estadoActual = EstadoApp::ComoJugar; 
                             else if (opcionMenuSeleccionada == 2) estadoActual = EstadoApp::Configuracion; 
                             break;
                         case EstadoApp::RegistroCombatientes:
+                            combate.reiniciarSeleccion();
                             estadoActual = EstadoApp::SeleccionPersonaje; 
                             break;
                         default:

@@ -3,6 +3,7 @@
 
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <vector>
 
 class Personaje {
 private:
@@ -23,6 +24,7 @@ private:
     float       vida;
     int         comboStep; 
     std::string nombre;
+    std::vector<int> comboSecreto; // Secuencia de 3 ataques para el combo especial
     std::string rutaAvatar; // <-- Variable para la imagen añadida
     
     // --- COMBATE AÉREO ---
@@ -32,6 +34,7 @@ private:
     
     // --- ATURDIMIENTO Y LANZAMIENTO ---
     bool        estaAturdido;
+    bool        estaCongelado;
     float       tiempoAturdimiento;
     
     // --- FÍSICAS Y POSICIÓN ---
@@ -63,6 +66,7 @@ public:
     void saltar();
     void setAgachado(bool agachado);
     bool lanzarAtaque(int tipo);
+    void setCongelado(bool congelado);
     void lanzarAtaqueAereo(int tipo);
     void actualizar();
     bool puedeHacerCombo() const;
@@ -78,10 +82,12 @@ public:
     // --- GETTERS ---
     float       getPosicionX() const;
     float       getPosicionY() const; 
+    std::vector<int> getComboSecreto() const { return comboSecreto; }
     bool        getEstaAgachado() const;
     bool        getEstaAtacando() const;
     bool        getEsSuperAtaque() const;
     int         getTipoAtaque() const;
+    bool        getEstaCongelado() const;
     bool        getEstaRodando() const;
     bool        getEstaCorriendo() const;
     bool        getEstaAturdido() const; 

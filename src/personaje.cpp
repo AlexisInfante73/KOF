@@ -1,6 +1,7 @@
 #include "personaje.h"
 #include <cmath>
 #include <iostream>
+#include <cstdlib>
 
 // --- CONSTANTES DEL JUEGO (Movidas aquí para evitar errores de macros) ---
 const float ALTURA_SUELO = 520.f;
@@ -20,6 +21,7 @@ Personaje::Personaje() {
     estaAtacando = false;
     estaRodando = false; 
     estaAturdido = false; 
+    estaCongelado = false;
     direccionRodada = 0.f; 
     tiempoAturdimiento = 0.f;
     esSuperAtaque = false;
@@ -55,6 +57,13 @@ void Personaje::inicializar(std::string nombrePeleador, std::string rutaImg, sf:
     cuerpoShape.setOutlineColor(sf::Color::White);
     cuerpoShape.setScale(1.f, 1.f); 
     
+    // Generar un combo aleatorio de 3 pasos para este personaje
+    comboSecreto.clear();
+    for(int i=0; i<3; i++) {
+        // 1: Golpe Leve, 2: Golpe Fuerte, 3: Patada Leve, 4: Patada Fuerte
+        comboSecreto.push_back((std::rand() % 4) + 1);
+    }
+
     // Configuración de la sombra
     sombraShape.setRadius(radioOriginal);
     sombraShape.setOrigin(radioOriginal, radioOriginal);
@@ -197,10 +206,10 @@ bool Personaje::lanzarAtaque(int tipo) {
         relojCooldownAtaque.restart();
 
         // Tinte de colores para indicar ataques
-        if (tipo == 1) cuerpoShape.setFillColor(sf::Color::White); 
-        if (tipo == 2) cuerpoShape.setFillColor(sf::Color::Yellow);        
-        if (tipo == 3) cuerpoShape.setFillColor(sf::Color::Cyan); 
-        if (tipo == 4) cuerpoShape.setFillColor(sf::Color::Magenta);        
+        if (tipo == 1) cuerpoShape.setFillColor(sf::Color::White);   // Golpe Leve
+        if (tipo == 2) cuerpoShape.setFillColor(sf::Color::Yellow);  // Golpe Fuerte
+        if (tipo == 3) cuerpoShape.setFillColor(sf::Color::Cyan);    // Patada Leve
+        if (tipo == 4) cuerpoShape.setFillColor(sf::Color::Magenta); // Patada Fuerte
         if (tipo == 5) {
             esSuperAtaque = true;
             cuerpoShape.setFillColor(sf::Color::White);
@@ -209,6 +218,11 @@ bool Personaje::lanzarAtaque(int tipo) {
         return true;
     }
     return false;
+}
+
+void Personaje::setCongelado(bool congelado) {
+    estaCongelado = congelado;
+    if (congelado) velocidad = {0.f, 0.f};
 }
 
 bool Personaje::puedeHacerCombo() const {
@@ -258,6 +272,8 @@ void Personaje::serLanzado(float fuerzaX, float fuerzaY) {
 }
 
 void Personaje::actualizar() {
+    if (estaCongelado) return; // Si está congelado, no procesamos físicas ni tiempos
+
     // Restaurar aturdimiento
     if (estaAturdido) {
         if (relojAturdimiento.getElapsedTime().asSeconds() >= tiempoAturdimiento) {
@@ -329,60 +345,46 @@ void Personaje::actualizar() {
     if (posicion.x < 40.f) posicion.x = 40.f;
     if (posicion.x > 1240.f) posicion.x = 1240.f;
 
-    // Actualizamos la posición visual de la bolita
+    // Actualizamos la posición visual de las formas
     cuerpoShape.setPosition(posicion);
-
-    // --- LÓGICA DE LA SOMBRA ---
-    float distanciaAlSuelo = ALTURA_SUELO - posicion.y;
-    float factorEscala = 1.0f - (distanciaAlSuelo / 450.f); // Se encoge hasta los 450px de altura
-    if (factorEscala < 0.3f) factorEscala = 0.3f; // No desaparece del todo
-
-    sombraShape.setPosition(posicion.x, ALTURA_SUELO + 35.f); // Un poco por debajo de los pies
-    sombraShape.setScale(factorEscala * 1.1f, factorEscala * 0.3f);
-    sombraShape.setFillColor(sf::Color(0, 0, 0, static_cast<sf::Uint8>(120 * factorEscala)));
+    sombraShape.setPosition(posicion.x, ALTURA_SUELO + radioOriginal - 5.f);
 }
 
 void Personaje::dibujar(sf::RenderWindow& window) {
-    window.draw(sombraShape); // Dibujar la sombra primero (atrás)
+    if (enElSuelo) {
+        window.draw(sombraShape);
+    }
     window.draw(cuerpoShape);
 }
 
-// --- GETTERS Y SETTERS BÁSICOS ---
-float Personaje::getPosicionX() const { return posicion.x; }
-float Personaje::getPosicionY() const { return posicion.y; }
-
 void Personaje::corregirPosicionX(float deltaX) {
     posicion.x += deltaX;
-    if (posicion.x < 40.f) posicion.x = 40.f;
-    if (posicion.x > 1240.f) posicion.x = 1240.f;
-    cuerpoShape.setPosition(posicion);
 }
 
+void Personaje::recibirDanio(float cantidad) {
+    vida -= cantidad;
+    if (vida < 0.f) vida = 0.f;
+}
+
+void Personaje::curarVida(float cantidad) {
+    vida += cantidad;
+    if (vida > 250.f) vida = 250.f;
+}
+
+float Personaje::getPosicionX() const { return posicion.x; }
+float Personaje::getPosicionY() const { return posicion.y; }
 bool Personaje::getEstaAgachado() const { return estaAgachado; }
 bool Personaje::getEstaAtacando() const { return estaAtacando; }
 bool Personaje::getEsSuperAtaque() const { return esSuperAtaque; }
 int Personaje::getTipoAtaque() const { return tipoAtaque; }
-bool Personaje::getEstaRodando() const { return estaRodando; } 
+bool Personaje::getEstaCongelado() const { return estaCongelado; }
+bool Personaje::getEstaRodando() const { return estaRodando; }
 bool Personaje::getEstaCorriendo() const { return estaCorriendo; }
 bool Personaje::getEstaAturdido() const { return estaAturdido; }
 float Personaje::getVida() const { return vida; }
 sf::Color Personaje::getColorBase() const { return colorBase; }
 std::string Personaje::getNombre() const { return nombre; }
-
-// --- NUEVA FUNCIÓN AGREGADA ---
 std::string Personaje::getRutaAvatar() const { return rutaAvatar; }
-
 bool Personaje::getEstaEnElAire() const { return estaEnElAire; }
 bool Personaje::getEstaAtacandoAire() const { return estaAtacandoAire; }
 int Personaje::getTipoAtaqueAire() const { return tipoAtaqueAire; }
-
-void Personaje::recibirDanio(float cantidad) {
-    if (estaRodando) return; 
-    vida -= cantidad;
-    if (vida < 0.f) vida = 0.f; 
-}
-
-void Personaje::curarVida(float cantidad) {
-    vida += cantidad;
-    if (vida > 250.f) vida = 250.f; 
-}
