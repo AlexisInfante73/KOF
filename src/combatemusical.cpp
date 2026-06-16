@@ -183,6 +183,20 @@ void CombateMusical::inicializarPantallaSeleccion() {
         spriteSeleccion.setScale(1280.f / texturaSeleccion.getSize().x, 720.f / texturaSeleccion.getSize().y);
     }
 
+    // --- GESTIÓN DE MÚSICA DE MENÚ ---
+    if (musicaCombate.getStatus() == sf::Music::Playing) musicaCombate.stop();
+
+    // Elegimos aleatoriamente entre menu1 y menu2
+    std::random_device rd_m;
+    std::mt19937 gen_m(rd_m());
+    std::string cancionMenu = (gen_m() % 2 == 0) ? "assets/sounds/menu1.ogg" : "assets/sounds/menu2.ogg";
+
+    if (musicaMenu.openFromFile(cancionMenu)) {
+        musicaMenu.setLoop(true);
+        musicaMenu.setVolume(50.f); // Volumen moderado para el menú
+        musicaMenu.play();
+    }
+
     selectorCuadrula.setSize(sf::Vector2f(104.f, 164.f)); 
     selectorCuadrula.setFillColor(sf::Color(0, 255, 255, 70)); 
     selectorCuadrula.setOutlineColor(sf::Color::Cyan); 
@@ -272,16 +286,22 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
 
     if (rondaTerminada || indiceActivoJ1 >= 3 || indiceActivoJ2 >= 3) return; 
     
+    // Corregido: Llamada necesaria para habilitar la detección de Sprint/Doble toque
+    equipoJ1[indiceActivoJ1].verificarDobleToque(evento, equipoJ2[indiceActivoJ2].getPosicionX());
+
     if (evento.type == sf::Event::KeyPressed) {
         if (evento.key.code == sf::Keyboard::Space) equipoJ1[indiceActivoJ1].saltar();
         
         // --- MECÁNICA ANTI-SPAM DE BOTONES ---
-        // Exigimos que no esté atacando, que no esté aturdido y que hayan pasado al menos 0.15s desde el último golpe
-        bool puedeAtacar = !equipoJ1[indiceActivoJ1].getEstaAtacando() && 
+        // Modificado para permitir combos si el personaje está en la ventana de tiempo correcta
+        bool puedeAtacar = (!equipoJ1[indiceActivoJ1].getEstaAtacando() || equipoJ1[indiceActivoJ1].puedeHacerCombo()) && 
                            !equipoJ1[indiceActivoJ1].getEstaAturdido() && 
                            relojCooldownJ1.getElapsedTime().asSeconds() > 0.15f;
 
-        if (puedeIntentarAtaque) {
+        if (puedeAtacar) {
+            // Reiniciamos el cooldown del controlador al detectar una intención de ataque válida
+            relojCooldownJ1.restart();
+
             if (evento.key.code == sf::Keyboard::H) { equipoJ1[indiceActivoJ1].lanzarAtaque(1); golpeImpactadoEsteTurno = false; }
             if (evento.key.code == sf::Keyboard::J) { equipoJ1[indiceActivoJ1].lanzarAtaque(2); golpeImpactadoEsteTurno = false; }
             if (evento.key.code == sf::Keyboard::K) { equipoJ1[indiceActivoJ1].lanzarAtaque(3); golpeImpactadoEsteTurno = false; }
@@ -289,11 +309,11 @@ void CombateMusical::procesarEntrada(sf::Event& evento) {
             
             if (evento.key.code == sf::Keyboard::E) {
                 if (nivelesJ1 >= 1) {
-                    // El especial también consume energía solo si el ataque se lanza realmente
-                    // Para mayor precisión, podrías hacer que lanzarAtaque devuelva un bool
-                    nivelesJ1--;
-                    equipoJ1[indiceActivoJ1].lanzarAtaque(5);
-                    golpeImpactadoEsteTurno = false;
+                    // Ahora solo consume energía si el ataque realmente se ejecutó
+                    if (equipoJ1[indiceActivoJ1].lanzarAtaque(5)) {
+                        nivelesJ1--;
+                        golpeImpactadoEsteTurno = false;
+                    }
                 }
             }
         }
@@ -357,6 +377,14 @@ void CombateMusical::actualizar() {
             } else {
                 reiniciarRelojes();
                 estadoActual = EstadoJuego::Combate;
+
+                // --- CAMBIO DE MÚSICA A COMBATE ---
+                musicaMenu.stop();
+                if (musicaCombate.openFromFile("assets/sounds/combate.ogg")) {
+                    musicaCombate.setLoop(true);
+                    musicaCombate.setVolume(60.f);
+                    musicaCombate.play();
+                }
             }
         }
 
@@ -667,8 +695,10 @@ void CombateMusical::actualizarIABot() {
             if (jugadorAtacando && decision < probDefensa) {
                 botQuiereDefenderse = true; botQuiereAgacharse = false;
             } else if (nivelesJ2 >= 1 && decision < probEspecial) { 
-                nivelesJ2--; equipoJ2[indiceActivoJ2].lanzarAtaque(5); 
-                botGolpeImpactadoEsteTurno = false; botQuiereAgacharse = false; botQuiereDefenderse = false;
+                if (equipoJ2[indiceActivoJ2].lanzarAtaque(5)) {
+                    nivelesJ2--; 
+                    botGolpeImpactadoEsteTurno = false; botQuiereAgacharse = false; botQuiereDefenderse = false;
+                }
             } else if (decision < 70) {
                 equipoJ2[indiceActivoJ2].lanzarAtaque((dist(gen) % 4) + 1);
                 botGolpeImpactadoEsteTurno = false; botQuiereAgacharse = false; botQuiereDefenderse = false;

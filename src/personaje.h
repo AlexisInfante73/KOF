@@ -62,7 +62,7 @@ public:
     void caminar(float direccion, bool correr = false); 
     void saltar();
     void setAgachado(bool agachado);
-    void lanzarAtaque(int tipo);
+    bool lanzarAtaque(int tipo);
     void lanzarAtaqueAereo(int tipo);
     void actualizar();
     bool puedeHacerCombo() const;

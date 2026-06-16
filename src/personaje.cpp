@@ -171,7 +171,7 @@ void Personaje::setAgachado(bool agachado) {
     }
 }
 
-void Personaje::lanzarAtaque(int tipo) {
+bool Personaje::lanzarAtaque(int tipo) {
     bool puedeHacerCombo = false;
     if (estaAtacando) {
         float tiempoTranscurrido = relojAtaque.getElapsedTime().asSeconds();
@@ -183,7 +183,7 @@ void Personaje::lanzarAtaque(int tipo) {
     // Lógica Anti-Spam: 
     // Si no es un combo, verificamos que haya pasado la duración del ataque + el delay de recuperación
     if (!puedeHacerCombo && relojCooldownAtaque.getElapsedTime().asSeconds() < (DURACION_ATAQUE + COOLDOWN_ATAQUE_POST)) {
-        return;
+        return false;
     }
 
     if ((!estaAtacando || puedeHacerCombo) && !estaRodando && !estaAturdido && enElSuelo) {
@@ -206,7 +206,9 @@ void Personaje::lanzarAtaque(int tipo) {
             cuerpoShape.setFillColor(sf::Color::White);
             cuerpoShape.setScale(1.3f, 1.3f); // Se hace más grande
         }
+        return true;
     }
+    return false;
 }
 
 bool Personaje::puedeHacerCombo() const {

@@ -2,6 +2,7 @@
 #define COMBATEMUSICAL_H
 
 #include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <vector>
 #include <string>
 #include "personaje.h" // Asegúrate de tener este archivo en tu proyecto
@@ -26,6 +27,14 @@ private:
     sf::Texture texturaSeleccion;
     sf::Sprite spriteSeleccion;
     sf::Font fuenteUI;
+
+    // --- Recursos de Audio ---
+    sf::SoundBuffer bufferGolpe;
+    sf::SoundBuffer bufferPatada;
+    sf::SoundBuffer bufferEspecial;
+    sf::Sound sonidoImpacto;
+    sf::Music musicaMenu;
+    sf::Music musicaCombate;
 
     // --- HUD Selección ---
     sf::RectangleShape selectorCuadrula;
