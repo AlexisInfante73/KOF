@@ -1,0 +1,6 @@
+*.o
+*.obj
+*.log
+*.tmp
+Thumbs.db
+.DS_Store
