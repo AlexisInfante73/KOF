@@ -213,18 +213,18 @@ CombateMusical::CombateMusical() {
 }
 
 void CombateMusical::cargarRoster() {
-    roster[0] = {"KYO", "assets/portraits/KYO.png", sf::Color(0, 174, 220)};
-    roster[1] = {"TERRY", "assets/portraits/TERRY.png", sf::Color(255, 127, 39)};
-    roster[2] = {"RYO", "assets/portraits/RYO.png", sf::Color(237, 28, 36)};
-    roster[3] = {"IORI", "assets/portraits/IORI.png", sf::Color(34, 177, 76)};
-    roster[4] = {"KULA", "assets/portraits/KULA.png", sf::Color(63, 72, 204)};
-    roster[5] = {"K'", "assets/portraits/K'.png", sf::Color(163, 73, 164)};
-    roster[6] = {"MAI", "assets/portraits/MAI.png", sf::Color(255, 174, 201)};
-    roster[7] = {"ATHENA", "assets/portraits/ATHENA.png", sf::Color(181, 230, 29)};
-    roster[8] = {"KIM", "assets/portraits/KIM.png", sf::Color(160, 0, 24)};
-    roster[9] = {"JOE", "assets/portraits/JOE.png", sf::Color::White};
-    roster[10]= {"BENIMARU", "assets/portraits/BENIMARU.png", sf::Color::Black};
-    roster[11]= {"CHIZURU", "assets/portraits/CHIZURU.png", sf::Color(127, 127, 127)};
+    roster[0] = {"KYO", "", sf::Color(0, 174, 220)};
+    roster[1] = {"TERRY", "", sf::Color(255, 127, 39)};
+    roster[2] = {"RYO", "", sf::Color(237, 28, 36)};
+    roster[3] = {"IORI", "", sf::Color(34, 177, 76)};
+    roster[4] = {"KULA", "", sf::Color(63, 72, 204)};
+    roster[5] = {"K'", "", sf::Color(163, 73, 164)};
+    roster[6] = {"MAI", "", sf::Color(255, 174, 201)};
+    roster[7] = {"ATHENA", "", sf::Color(181, 230, 29)};
+    roster[8] = {"KIM", "", sf::Color(160, 0, 24)};
+    roster[9] = {"JOE", "", sf::Color::White};
+    roster[10]= {"BENIMARU", "", sf::Color::Black};
+    roster[11]= {"CHIZURU", "", sf::Color(127, 127, 127)};
 }
 
 void CombateMusical::reiniciarSeleccion() {
@@ -850,7 +850,7 @@ void CombateMusical::acumularEnergiaJ2(float cantidad) {
 void CombateMusical::cargarAvatarsUI() {
     if (indiceActivoJ1 < 3) {
         std::string ruta = equipoJ1[indiceActivoJ1].getRutaAvatar();
-        if (texturaAvatarJ1.loadFromFile(ruta) || texturaAvatarJ1.loadFromFile("../" + ruta)) {
+        if (!ruta.empty() && (texturaAvatarJ1.loadFromFile(ruta) || texturaAvatarJ1.loadFromFile("../" + ruta))) {
             spriteAvatarJ1.setTexture(texturaAvatarJ1, true);
             spriteAvatarJ1.setScale(85.f / texturaAvatarJ1.getSize().x, 85.f / texturaAvatarJ1.getSize().y);
             spriteAvatarJ1.setColor(sf::Color::White);
@@ -862,7 +862,7 @@ void CombateMusical::cargarAvatarsUI() {
     }
     if (indiceActivoJ2 < 3) {
         std::string ruta = equipoJ2[indiceActivoJ2].getRutaAvatar();
-        if (texturaAvatarJ2.loadFromFile(ruta) || texturaAvatarJ2.loadFromFile("../" + ruta)) {
+        if (!ruta.empty() && (texturaAvatarJ2.loadFromFile(ruta) || texturaAvatarJ2.loadFromFile("../" + ruta))) {
             spriteAvatarJ2.setTexture(texturaAvatarJ2, true);
             spriteAvatarJ2.setScale(85.f / texturaAvatarJ2.getSize().x, 85.f / texturaAvatarJ2.getSize().y);
             spriteAvatarJ2.setColor(sf::Color::White);

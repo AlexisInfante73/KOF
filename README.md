@@ -29,3 +29,12 @@ Derrotar al oponente reduciendo su barra de vida antes de que termine el combate
 ## Creditos
 Proyecto desarrollado como entrega escolar por el equipo/alumno responsable del proyecto.
 Recursos visuales y de audio utilizados con fines educativos.
+
+## Equipo
+- Lider: Alexis Infante (@AlexisInfante73-github)
+- Integrante 2: Emiliano (@EMILIANO-github)
+
+## Tecnologias
+- Motor/Framework: SFML
+- Lenguaje: C++
+- Librerias adicionales: SFML Graphics, SFML Window, SFML Audio y SFML System
